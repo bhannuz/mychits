@@ -40,8 +40,15 @@
             <div class="login-brand-sub">☁ CLOUD &nbsp;·&nbsp; Chit Fund Management</div>
         </div>
 
+        <!-- Step 0: Choose role -->
+        <div id="loginStep0" class="login-step active">
+            <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">I am logging in as</div>
+            <button class="btn-save" style="width:100%;margin-bottom:10px;padding:16px;font-size:1rem;" onclick="chooseLoginRole('admin')">👑 Admin<br><span style="font-weight:400;font-size:0.72rem;opacity:0.85;">I run a chit fund business</span></button>
+            <button class="btn-cancel" style="width:100%;padding:16px;font-size:1rem;" onclick="chooseLoginRole('member')">👤 Member<br><span style="font-weight:400;font-size:0.72rem;opacity:0.85;">I've joined a chit fund group</span></button>
+        </div>
+
         <!-- Step 1: Enter phone -->
-        <div id="loginStep1" class="login-step active">
+        <div id="loginStep1" class="login-step">
             <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Enter Mobile Number</div>
             <div class="login-phone-input">
                 <span class="phone-prefix">+91</span>
@@ -49,6 +56,7 @@
                     onkeydown="if(event.key==='Enter') handleLoginSubmit()">
             </div>
             <button class="btn-save" style="margin-top:14px;width:100%;" onclick="handleLoginSubmit()">🔐 Send OTP</button>
+            <button class="btn-cancel" style="width:100%;margin-top:8px;" onclick="showLoginStep('loginStep0')">← Back</button>
             <div id="recaptcha-container"></div>
         </div>
 
@@ -60,6 +68,15 @@
                 onkeydown="if(event.key==='Enter') handleOtpSubmit()">
             <button class="btn-save" style="margin-top:14px;width:100%;" onclick="handleOtpSubmit()">✅ Verify &amp; Continue</button>
             <button class="btn-cancel" style="width:100%;margin-top:8px;" onclick="goBackToLogin()">← Back</button>
+        </div>
+
+        <!-- Step 1c: Brand-new admin — create their org -->
+        <div id="loginStep1c" class="login-step">
+            <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Set Up Your Business</div>
+            <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px;">You're verified! Name your chit fund business to finish creating your admin account.</div>
+            <input type="text" id="newOrgName" class="form-input" placeholder="e.g. Ramesh Chit Funds" style="margin-bottom:0;"
+                onkeydown="if(event.key==='Enter') createNewOrgAndAdmin()">
+            <button class="btn-save" style="margin-top:14px;width:100%;" onclick="createNewOrgAndAdmin()">🚀 Create My Account</button>
         </div>
 
         <!-- Step 2: Pending approval -->
