@@ -23,8 +23,8 @@
 
     // 1. Create the tenant record
     await db.collection('orgs').doc(ORG_ID).set({
-        name: 'AK Chit Funds',
-        slug: 'ak-chits',
+        name: 'MYCHITS',
+        slug: 'mychits',
         ownerPhone: ADMIN_PHONE_E164,
         status: 'active',
         plan: 'default',
