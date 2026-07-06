@@ -106,6 +106,7 @@ function applyUserSession(user){
         document.getElementById('headerRoleBadge').textContent = user.role === 'supreme' ? 'SUPREME' : 'ADMIN';
         document.getElementById('headerRoleBadge').style.display = 'inline';
         document.getElementById('accessReqBtn').style.display = (user.role === 'supreme') ? 'inline-flex' : 'none';
+        document.getElementById('navSupreme').style.display = (user.role === 'supreme') ? '' : 'none';
         document.getElementById('adminStatCards').style.display = '';
         document.getElementById('adminActionBtns').style.display = 'flex';
         document.getElementById('adminMemberSearch').style.display = '';
@@ -173,6 +174,7 @@ function handleLogout(){
     document.getElementById('memberQrArea').style.display = 'none';
     document.getElementById('logoutBtn').style.display = 'none';
     document.getElementById('accessReqBtn').style.display = 'none';
+    document.getElementById('navSupreme').style.display = 'none';
     document.getElementById('headerRoleBadge').textContent = 'ADMIN';
     document.getElementById('headerRoleBadge').className = 'badge text-warning border border-warning px-2';
     document.getElementById('ledgerData').innerHTML = '';
@@ -233,7 +235,65 @@ async function createAdminAccount(){
     }
 }
 
-// ── Admin: provision a Member's login (called from members.js on save) ───────
+// ── Supreme: dashboard of all orgs/admins ─────────────────────────────────────
+async function loadSupremeDashboard(){
+    if(!CURRENT_USER || CURRENT_USER.role !== 'supreme') return;
+    const listEl = document.getElementById('supremeOrgList');
+    listEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;">Loading…</div>';
+
+    const [orgsSnap, adminsSnap, groups, members] = await Promise.all([
+        db.collection('orgs').get(),
+        db.collection('users').where('role','==','admin').get(),
+        getCollection('groups', true),
+        getCollection('members', true)
+    ]);
+
+    const orgs = orgsSnap.docs.map(d=>({id:d.id, ...d.data()}));
+    const admins = adminsSnap.docs.map(d=>({uid:d.id, ...d.data()}));
+
+    if(!orgs.length){
+        listEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;">No organizations yet. Create one with "👑 New Admin".</div>';
+        return;
+    }
+
+    listEl.innerHTML = orgs.map(function(org){
+        const admin = admins.find(a=>a.orgId===org.id);
+        const gCount = groups.filter(g=>g.orgId===org.id).length;
+        const mCount = members.filter(m=>m.orgId===org.id).length;
+        const statusColor = org.status === 'active' ? '#10b981' : '#ef4444';
+        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+                '<div>' +
+                    '<div style="font-weight:800;font-size:1rem;color:white;">' + (org.name||'Unnamed') + '</div>' +
+                    '<div style="font-size:0.78rem;color:var(--text-dim);margin-top:2px;">👤 ' + (admin?admin.name:'—') + ' &nbsp;·&nbsp; 📱 +91 ' + (admin?admin.phone:(org.ownerPhone||'—')) + '</div>' +
+                '</div>' +
+                '<span style="font-size:0.68rem;font-weight:800;color:' + statusColor + ';border:1px solid ' + statusColor + ';border-radius:8px;padding:2px 8px;">' + (org.status||'active').toUpperCase() + '</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:14px;margin-top:10px;font-size:0.8rem;color:var(--text-dim);">' +
+                '<span>📂 ' + gCount + ' group' + (gCount!==1?'s':'') + '</span>' +
+                '<span>👥 ' + mCount + ' member' + (mCount!==1?'s':'') + '</span>' +
+            '</div>' +
+            (admin ? '<button class="btn-cancel" style="width:100%;margin-top:10px;font-size:0.78rem;padding:7px;" onclick="openResetPasswordModal(\'' + admin.uid + '\',\'' + admin.phone + '\',\'' + (admin.name||'').replace(/'/g,"\\'") + '\')">🔑 Reset Login Password</button>' : '') +
+        '</div>';
+    }).join('');
+}
+
+// ── Supreme: reset an Admin/Member's password ─────────────────────────────────
+// IMPORTANT LIMITATION: Firebase's client SDK cannot directly overwrite another
+// user's password — that normally requires a backend (Cloud Function + Admin
+// SDK) or a real, deliverable email address for Firebase's password-reset
+// email. Until one of those is set up, this dialog can only show you how to
+// do it manually via the Firebase Console (Authentication → Users).
+let _resetTargetUid = null, _resetTargetPhone = null;
+
+function openResetPasswordModal(uid, phone, name){
+    _resetTargetUid = uid;
+    _resetTargetPhone = phone;
+    document.getElementById('resetPwTargetName').textContent = name + ' (+91 ' + phone + ')';
+    document.getElementById('resetPwEmail').textContent = phone + '@mychits.local';
+    openModal('resetPasswordModal');
+}
+
 // Uses the secondary Firebase app instance so the Admin's own session survives.
 // Returns the new user's uid, or null if it failed (member doc is still saved
 // either way — this only affects whether they can log in).
