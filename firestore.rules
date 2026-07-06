@@ -1,0 +1,155 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MYCHITS — Multi-tenant security rules
+//
+// Trust model: Firebase Phone Auth verifies the caller's phone number and
+// puts it in request.auth.token.phone_number automatically (E.164 format,
+// e.g. "+919876543210") — no Cloud Functions / custom claims needed.
+//
+// The users/{phone} document is the single source of truth for WHO a
+// verified phone number is: its role (supreme | admin | member) and which
+// org it belongs to. Every other collection is tagged with orgId and is
+// only readable/writable by supreme, or by admins/members of that same org.
+// ═══════════════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── helpers ─────────────────────────────────────────────────────────
+    function phoneKey() {
+      return request.auth.token.phone_number;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && phoneKey() != null;
+    }
+
+    function hasProfile() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(phoneKey()));
+    }
+
+    function myUser() {
+      return get(/databases/$(database)/documents/users/$(phoneKey())).data;
+    }
+
+    function isSupreme() {
+      return hasProfile() && myUser().role == 'supreme';
+    }
+
+    function isAdmin() {
+      return hasProfile() && myUser().role == 'admin';
+    }
+
+    function isAdminOrSupreme() {
+      return isAdmin() || isSupreme();
+    }
+
+    function myOrgId() {
+      return myUser().orgId;
+    }
+
+    // true if the given data (resource or incoming request data) belongs
+    // to the caller's own org
+    function inMyOrg(data) {
+      return hasProfile() && data.orgId == myOrgId();
+    }
+
+    // read: supreme, or admin/member of the same org
+    function canRead(data) {
+      return isSupreme() || inMyOrg(data);
+    }
+
+    // write: supreme, or admin of the same org (members are read-only)
+    function canWrite(data) {
+      return isSupreme() || (isAdmin() && inMyOrg(data));
+    }
+
+    // ── users : phone -> {role, orgId, name} lookup table ───────────────
+    match /users/{phone} {
+      allow read: if isSignedIn() && (
+                    phone == phoneKey() ||
+                    isSupreme() ||
+                    (isAdmin() && resource.data.orgId == myOrgId())
+                  );
+
+      // Supreme can create anyone (new admins). Admins can only create
+      // MEMBER profiles inside their own org (this is how "approve access"
+      // provisions a member's login).
+      allow create: if isSupreme() ||
+                    (isAdmin() &&
+                     request.resource.data.orgId == myOrgId() &&
+                     request.resource.data.role == 'member');
+
+      allow update, delete: if isSupreme() ||
+                    (isAdmin() && resource.data.orgId == myOrgId() &&
+                     resource.data.role == 'member');
+    }
+
+    // ── orgs : tenant registry (created only by supreme) ────────────────
+    match /orgs/{orgId} {
+      allow read: if isSupreme() || (hasProfile() && myOrgId() == orgId);
+      allow create, update, delete: if isSupreme();
+    }
+
+    // ── accessRequests : signup / join requests ──────────────────────────
+    // Anyone who has verified their phone (even with no profile yet) can
+    // create/read their OWN request. Admins/supreme manage requests for
+    // their org.
+    match /accessRequests/{id} {
+      allow read: if isSignedIn() && (
+                    resource.data.phone == phoneKey() ||
+                    isSupreme() ||
+                    (isAdmin() && resource.data.orgId == myOrgId())
+                  );
+      allow create: if isSignedIn() && request.resource.data.phone == phoneKey();
+      allow update, delete: if isSupreme() ||
+                    (isAdmin() && resource.data.orgId == myOrgId());
+    }
+
+    // ── tenant-scoped business data ──────────────────────────────────────
+    // members, groups, payments, memberCommitments, memberQrCodes, settings
+    // all share the same rule shape: org-scoped read, admin/supreme write.
+    match /members/{id} {
+      allow read:   if canRead(resource.data);
+      allow create: if canWrite(request.resource.data);
+      allow update: if canWrite(resource.data) && canWrite(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+    match /groups/{id} {
+      allow read:   if canRead(resource.data);
+      allow create: if canWrite(request.resource.data);
+      allow update: if canWrite(resource.data) && canWrite(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+    match /payments/{id} {
+      allow read:   if canRead(resource.data);
+      allow create: if canWrite(request.resource.data);
+      allow update: if canWrite(resource.data) && canWrite(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+    match /memberCommitments/{id} {
+      allow read:   if canRead(resource.data);
+      allow create: if canWrite(request.resource.data);
+      allow update: if canWrite(resource.data) && canWrite(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+    match /memberQrCodes/{id} {
+      allow read:   if canRead(resource.data);
+      allow create: if canWrite(request.resource.data);
+      allow update: if canWrite(resource.data) && canWrite(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+    match /settings/{id} {
+      allow read:   if canRead(resource.data);
+      allow create: if canWrite(request.resource.data);
+      allow update: if canWrite(resource.data) && canWrite(request.resource.data);
+      allow delete: if canWrite(resource.data);
+    }
+
+    // default deny for anything not explicitly matched above
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
