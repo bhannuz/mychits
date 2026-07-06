@@ -40,70 +40,39 @@
             <div class="login-brand-sub">☁ CLOUD &nbsp;·&nbsp; Chit Fund Management</div>
         </div>
 
-        <!-- Step 0: Choose role -->
-        <div id="loginStep0" class="login-step active">
-            <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:14px;">I am logging in as</div>
-            <button class="btn-save" style="width:100%;margin-bottom:10px;padding:16px;font-size:1rem;" onclick="chooseLoginRole('admin')">👑 Admin<br><span style="font-weight:400;font-size:0.72rem;opacity:0.85;">I run a chit fund business</span></button>
-            <button class="btn-cancel" style="width:100%;padding:16px;font-size:1rem;" onclick="chooseLoginRole('member')">👤 Member<br><span style="font-weight:400;font-size:0.72rem;opacity:0.85;">I've joined a chit fund group</span></button>
-        </div>
-
-        <!-- Step 1: Enter phone -->
-        <div id="loginStep1" class="login-step">
-            <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Enter Mobile Number</div>
+        <!-- Login: phone + password -->
+        <div id="loginStep1" class="login-step active">
+            <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Mobile Number</div>
             <div class="login-phone-input">
                 <span class="phone-prefix">+91</span>
-                <input type="tel" id="loginPhone" class="form-input" placeholder="10-digit number" maxlength="10" inputmode="numeric" style="flex:1;margin-bottom:0;"
-                    onkeydown="if(event.key==='Enter') handleLoginSubmit()">
+                <input type="tel" id="loginPhone" class="form-input" placeholder="10-digit number" maxlength="10" inputmode="numeric" style="flex:1;margin-bottom:0;">
             </div>
-            <button class="btn-save" style="margin-top:14px;width:100%;" onclick="handleLoginSubmit()">🔐 Send OTP</button>
-            <button class="btn-cancel" style="width:100%;margin-top:8px;" onclick="showLoginStep('loginStep0')">← Back</button>
-            <div id="recaptcha-container"></div>
-        </div>
-
-        <!-- Step 1b: Enter OTP -->
-        <div id="loginStep1b" class="login-step">
-            <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Enter OTP</div>
-            <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:10px;">Code sent to <span id="otpPhoneLabel" style="color:white;font-weight:700;"></span></div>
-            <input type="tel" id="loginOtp" class="form-input" placeholder="6-digit code" maxlength="6" inputmode="numeric" style="margin-bottom:0;"
-                onkeydown="if(event.key==='Enter') handleOtpSubmit()">
-            <button class="btn-save" style="margin-top:14px;width:100%;" onclick="handleOtpSubmit()">✅ Verify &amp; Continue</button>
-            <button class="btn-cancel" style="width:100%;margin-top:8px;" onclick="goBackToLogin()">← Back</button>
-        </div>
-
-        <!-- Step 1c: Brand-new admin — create their org -->
-        <div id="loginStep1c" class="login-step">
-            <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Set Up Your Business</div>
-            <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:12px;">You're verified! Name your chit fund business to finish creating your admin account.</div>
-            <input type="text" id="newOrgName" class="form-input" placeholder="e.g. Ramesh Chit Funds" style="margin-bottom:0;"
-                onkeydown="if(event.key==='Enter') createNewOrgAndAdmin()">
-            <button class="btn-save" style="margin-top:14px;width:100%;" onclick="createNewOrgAndAdmin()">🚀 Create My Account</button>
-        </div>
-
-        <!-- Step 2: Pending approval -->
-        <div id="loginStep2" class="login-step">
-            <div class="pending-box">
-                <div style="font-size:2rem;margin-bottom:10px;">⏳</div>
-                <div style="font-weight:800;color:#fbbf24;margin-bottom:6px;">Access Pending</div>
-                <div style="font-size:0.85rem;color:var(--text-dim);margin-bottom:4px;">Request sent for</div>
-                <div id="pendingPhone" style="font-weight:700;color:white;margin-bottom:14px;"></div>
-                <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:14px;">Waiting for admin approval. This page will refresh automatically.</div>
-                <button class="btn-save" style="width:100%;margin-bottom:8px;" onclick="checkAccessStatus()">🔄 Check Status</button>
-                <button class="btn-cancel" style="width:100%;" onclick="goBackToLogin()">← Back</button>
-            </div>
-        </div>
-
-        <!-- Step 3: Denied -->
-        <div id="loginStep3" class="login-step">
-            <div class="denied-box">
-                <div style="font-size:2rem;margin-bottom:10px;">🚫</div>
-                <div style="font-weight:800;color:#f87171;margin-bottom:8px;">Access Denied</div>
-                <div style="font-size:0.85rem;color:var(--text-dim);margin-bottom:14px;">Your request was not approved. Contact the admin for assistance.</div>
-                <button class="btn-cancel" style="width:100%;" onclick="goBackToLogin()">← Try Again</button>
-            </div>
+            <div style="font-size:0.8rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 10px;">Password</div>
+            <input type="password" id="loginPassword" class="form-input" placeholder="Password" style="margin-bottom:0;"
+                onkeydown="if(event.key==='Enter') handleLoginSubmit()">
+            <button class="btn-save" style="margin-top:14px;width:100%;" onclick="handleLoginSubmit()">🔐 Log In</button>
+            <div id="loginErrorMsg" style="display:none;color:#f87171;font-size:0.78rem;margin-top:10px;text-align:center;"></div>
         </div>
     </div>
 </div>
 <!-- ══ END LOGIN SCREEN ═══════════════════════════════════════════════════════ -->
+
+<!-- SUPREME: CREATE ADMIN MODAL -->
+<div id="createAdminModal" class="modal-overlay">
+    <div class="modal-content-custom">
+        <div class="modal-title">👑 Create New Admin</div>
+        <label class="form-label-small">Business / Org Name</label>
+        <input type="text" id="newAdminOrgName" class="form-input" placeholder="e.g. Ramesh Chit Funds">
+        <label class="form-label-small">Admin Name</label>
+        <input type="text" id="newAdminName" class="form-input" placeholder="e.g. Ramesh Kumar">
+        <label class="form-label-small">Admin Phone Number</label>
+        <input type="text" id="newAdminPhone" class="form-input" placeholder="e.g. 9876543210" maxlength="10">
+        <label class="form-label-small">Password</label>
+        <input type="text" id="newAdminPassword" class="form-input" placeholder="Set a login password">
+        <button class="btn-save" onclick="createAdminAccount()">🚀 Create Admin</button>
+        <button class="btn-cancel" onclick="closeModal('createAdminModal')">Cancel</button>
+    </div>
+</div>
 
 <div class="container py-2" style="padding-left:12px;padding-right:12px;">
     <!-- ADMIN HEADER -->
@@ -119,8 +88,8 @@
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
             <span id="headerRoleBadge" class="badge text-warning border border-warning" style="padding:4px 8px;font-size:0.72rem;">ADMIN</span>
-            <button id="accessReqBtn" onclick="openAccessRequests()" title="Access Requests" style="display:none;background:rgba(243,156,18,.12);border:1px solid rgba(243,156,18,.3);color:#f39c12;border-radius:10px;padding:5px 10px;font-size:1.05rem;font-weight:700;cursor:pointer;position:relative;">
-                🔐 Requests <span id="pendingCount" style="display:none;background:#ef4444;color:white;border-radius:50%;width:16px;height:16px;font-size:0.98rem;font-weight:900;position:absolute;top:-5px;right:-5px;display:flex;align-items:center;justify-content:center;"></span>
+            <button id="accessReqBtn" onclick="openModal('createAdminModal')" title="Create New Admin" style="display:none;background:rgba(243,156,18,.12);border:1px solid rgba(243,156,18,.3);color:#f39c12;border-radius:10px;padding:5px 10px;font-size:1.05rem;font-weight:700;cursor:pointer;position:relative;">
+                👑 New Admin
             </button>
             <button id="backupReminderBtn" onclick="switchTab('backup')" class="backup-badge-btn" title="Daily backup due!" style="padding:5px 9px;font-size:0.72rem;">
                 💾
@@ -774,7 +743,11 @@
         <label class="form-label-small">Full Name</label>
         <input type="text" id="mName" class="form-input" placeholder="e.g. Rama Krishna">
         <label class="form-label-small">Phone Number</label>
-        <input type="text" id="mPhone" class="form-input" placeholder="e.g. 9876543210">
+        <input type="text" id="mPhone" class="form-input" placeholder="e.g. 9876543210" oninput="_syncMemberPasswordDefault()">
+        <div id="mPasswordWrap">
+            <label class="form-label-small">Login Password <span style="color:var(--text-dim);font-size:1.05rem;">(share this with the member)</span></label>
+            <input type="text" id="mPassword" class="form-input" placeholder="Auto-filled from phone number, or set your own">
+        </div>
         <label class="form-label-small">Group Enrollments <span style="color:var(--text-dim);font-size:1.05rem;">(same group multiple times allowed)</span></label>
         <div id="enrollmentList" style="margin-bottom:8px;display:flex;flex-direction:column;gap:6px;"></div>
         <button type="button" onclick="addEnrollmentRow()" style="background:rgba(243,156,18,.12);border:1px dashed rgba(243,156,18,.4);color:#f39c12;border-radius:10px;padding:8px;width:100%;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:12px;">+ Add Group Enrollment</button>
