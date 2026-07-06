@@ -1,25 +1,21 @@
 // ═══════════════════════════════════════════════════════════
-// MYCHITS — AUTH & ACCESS CONTROL (Firebase Phone Auth + multi-tenant roles)
+// MYCHITS — AUTH & ACCESS CONTROL
+// Phone + password login (Firebase Email/Password auth, using a synthetic
+// email of "{10-digit phone}@mychits.local"). No OTP/SMS involved.
+//
+// Hierarchy:
+//   SUPREME (hardcoded bootstrap phone below) — sees/manages everything.
+//   ADMIN   — created by Supreme. Owns one org: their own groups/members.
+//   MEMBER  — created by their Admin. Read-only view of their own data.
 // ═══════════════════════════════════════════════════════════
 
-// Single default tenant used until the "create new org" flow (Supreme
-// dashboard, next phase) is built. Every new admin/member is scoped to
-// this org for now.
-const DEFAULT_ORG_ID = 'org_default';
+const SUPREME_PHONE = '9876543210';
+const AUTH_EMAIL_DOMAIN = '@mychits.local';
 
-let _confirmationResult = null;
-let _recaptchaVerifier   = null;
-let _pendingVerifiedPhone = null; // E.164, set once OTP is confirmed
-let _loginRoleIntent = null;      // 'admin' | 'member' — chosen on loginStep0
-
-function chooseLoginRole(role){
-    _loginRoleIntent = role;
-    document.getElementById('loginPhone').value = '';
-    showLoginStep('loginStep1');
-}
+function phoneToEmail(phoneLocal){ return phoneLocal + AUTH_EMAIL_DOMAIN; }
+function emailToPhone(email){ return (email||'').split('@')[0]; }
 
 function saveSession(user){ sessionStorage.setItem('mychits_session', JSON.stringify(user)); }
-function loadSession(){ try{ return JSON.parse(sessionStorage.getItem('mychits_session'))||null; }catch(e){ return null; } }
 function clearSession(){ sessionStorage.removeItem('mychits_session'); }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
@@ -36,200 +32,65 @@ async function initAuth(){
     document.getElementById('loginScreen').style.display = 'flex';
 }
 
-function _getRecaptcha(){
-    if(!_recaptchaVerifier){
-        _recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-            size: 'invisible'
-        });
-    }
-    return _recaptchaVerifier;
+function _showLoginError(msg){
+    const el = document.getElementById('loginErrorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+function _clearLoginError(){
+    document.getElementById('loginErrorMsg').style.display = 'none';
 }
 
-// ── Step 1: send OTP ───────────────────────────────────────────────────────────
+// ── Login ──────────────────────────────────────────────────────────────────
 async function handleLoginSubmit(){
+    _clearLoginError();
     const phoneLocal = document.getElementById('loginPhone').value.trim();
-    if(phoneLocal.length !== 10){ showToast('❌ Enter valid 10-digit number', false); return; }
-    const e164 = '+91' + phoneLocal;
-    showToast('⏳ Sending OTP…', true);
+    const password   = document.getElementById('loginPassword').value;
+    if(phoneLocal.length !== 10){ _showLoginError('Enter a valid 10-digit number'); return; }
+    if(!password){ _showLoginError('Enter your password'); return; }
+
+    const email = phoneToEmail(phoneLocal);
+    showToast('⏳ Logging in…', true);
     try{
-        _confirmationResult = await firebase.auth().signInWithPhoneNumber(e164, _getRecaptcha());
-        document.getElementById('otpPhoneLabel').textContent = '+91 ' + phoneLocal;
-        showLoginStep('loginStep1b');
-        showToast('📲 OTP sent', true);
-    }catch(err){
-        console.error(err);
-        showToast('❌ Could not send OTP. Try again.', false);
-        if(_recaptchaVerifier){ _recaptchaVerifier.render().then(function(id){ grecaptcha.reset(id); }).catch(function(){}); }
-    }
-}
+        const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const uid = cred.user.uid;
+        let userDoc = await db.collection('users').doc(uid).get();
 
-// ── Step 1b: verify OTP, then resolve role from users/{phone} ─────────────────
-async function handleOtpSubmit(){
-    const code = document.getElementById('loginOtp').value.trim();
-    if(!_confirmationResult){ showToast('❌ Request a new OTP', false); goBackToLogin(); return; }
-    if(code.length !== 6){ showToast('❌ Enter the 6-digit code', false); return; }
-    showToast('⏳ Verifying…', true);
-    try{
-        const result = await _confirmationResult.confirm(code);
-        const e164 = result.user.phoneNumber; // e.g. "+919876543210"
-        _pendingVerifiedPhone = e164;
-        await resolveSessionForPhone(e164);
-    }catch(err){
-        console.error(err);
-        showToast('❌ Incorrect or expired OTP', false);
-    }
-}
+        // First-ever login of the hardcoded Supreme phone — self-provision
+        // its profile (rules only allow this for this exact phone).
+        if(!userDoc.exists && phoneLocal === SUPREME_PHONE){
+            await db.collection('users').doc(uid).set({
+                role: 'supreme', phone: phoneLocal, name: 'Supreme Admin',
+                createdAt: new Date().toISOString()
+            });
+            userDoc = await db.collection('users').doc(uid).get();
+        }
 
-// Looks up users/{phone}; logs the person in if a profile exists, otherwise
-// falls back to the access-request flow.
-async function resolveSessionForPhone(e164){
-    const phoneLocal = e164.replace(/\D/g,'').slice(-10);
-    const userDoc = await db.collection('users').doc(e164).get().catch(()=>null);
+        if(!userDoc.exists){
+            await firebase.auth().signOut();
+            _showLoginError('Account not set up yet. Ask your admin to create your login.');
+            return;
+        }
 
-    if(userDoc && userDoc.exists){
         const u = userDoc.data();
         const user = {
-            phone: phoneLocal, phoneE164: e164,
-            role: u.role, orgId: u.orgId || null,
-            memberId: u.memberId || null, name: u.name || 'User'
+            uid, phone: phoneLocal, role: u.role,
+            orgId: u.orgId || null, memberId: u.memberId || null,
+            name: u.name || 'User'
         };
         CURRENT_USER = user;
         saveSession(user);
         applyUserSession(user);
-        return;
-    }
-
-    // No profile yet.
-    if(_loginRoleIntent === 'admin'){
-        // Brand-new admin — send them to create their own org instead of
-        // filing a member access request.
-        showLoginStep('loginStep1c');
-        return;
-    }
-
-    // Member path: existing member or brand-new signup, both go through
-    // an access request scoped to the default org for now.
-    const members = await db.collection('members').where('orgId','==',DEFAULT_ORG_ID).get()
-        .then(s=>s.docs.map(d=>({id:d.id,...d.data()}))).catch(()=>[]);
-    const matched = members.find(function(m){
-        return (m.phone||'').replace(/\D/g,'').slice(-10) === phoneLocal;
-    });
-
-    const reqs = await db.collection('accessRequests').where('phone','==',e164).get()
-        .catch(function(){ return {empty:true, docs:[]}; });
-
-    if(!reqs.empty && reqs.docs.length > 0){
-        const req = reqs.docs[0].data();
-        if(req.status === 'denied'){
-            showLoginStep('loginStep3');
-        } else {
-            document.getElementById('pendingPhone').textContent = '+91 ' + phoneLocal;
-            showLoginStep('loginStep2');
-        }
-    } else {
-        await db.collection('accessRequests').add({
-            phone: e164,
-            phoneLocal: phoneLocal,
-            orgId: DEFAULT_ORG_ID,
-            name: matched ? matched.name : 'Unknown (' + phoneLocal + ')',
-            memberId: matched ? matched.id : '',
-            status: 'pending',
-            requestedAt: new Date().toISOString()
-        });
-        document.getElementById('pendingPhone').textContent = '+91 ' + phoneLocal;
-        showLoginStep('loginStep2');
-        showToast('📨 Access request sent to admin', true);
-    }
-}
-
-async function createNewOrgAndAdmin(){
-    if(!_pendingVerifiedPhone){ showToast('❌ Please verify your phone again', false); goBackToLogin(); return; }
-    const name = document.getElementById('newOrgName').value.trim();
-    if(!name){ showToast('❌ Enter your business name', false); return; }
-    showToast('⏳ Creating your account…', true);
-    try{
-        const orgRef = db.collection('orgs').doc();
-        const batch = db.batch();
-        batch.set(orgRef, {
-            name: name,
-            ownerPhone: _pendingVerifiedPhone,
-            status: 'active',
-            plan: 'default',
-            createdAt: new Date().toISOString()
-        });
-        batch.set(db.collection('users').doc(_pendingVerifiedPhone), {
-            role: 'admin',
-            orgId: orgRef.id,
-            name: name,
-            phone: _pendingVerifiedPhone,
-            createdAt: new Date().toISOString()
-        });
-        await batch.commit();
-        showToast('✅ Account created! Loading…', true);
-        await resolveSessionForPhone(_pendingVerifiedPhone);
     }catch(err){
         console.error(err);
-        showToast('❌ Could not create account. Try again.', false);
+        if(err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password'){
+            _showLoginError('Incorrect phone number or password.');
+        } else if(err.code === 'auth/too-many-requests'){
+            _showLoginError('Too many attempts. Try again in a bit.');
+        } else {
+            _showLoginError('Login failed. Please try again.');
+        }
     }
-}
-
-async function checkAccessStatus(){
-    if(!_pendingVerifiedPhone){ goBackToLogin(); return; }
-    const userDoc = await db.collection('users').doc(_pendingVerifiedPhone).get().catch(()=>null);
-    if(userDoc && userDoc.exists){
-        showToast('✅ Access approved! Loading…', true);
-        await resolveSessionForPhone(_pendingVerifiedPhone);
-        return;
-    }
-    const reqs = await db.collection('accessRequests').where('phone','==',_pendingVerifiedPhone).get()
-        .catch(function(){ return {empty:true, docs:[]}; });
-    if(!reqs.empty && reqs.docs.length > 0 && reqs.docs[0].data().status === 'denied'){
-        showLoginStep('loginStep3');
-        return;
-    }
-    showToast('⏳ Still pending approval', true);
-}
-
-// ── Login step switcher ───────────────────────────────────────────────────────
-var _pendingPollTimer = null;
-
-function showLoginStep(stepId){
-    ['loginStep0','loginStep1','loginStep1b','loginStep1c','loginStep2','loginStep3'].forEach(function(id){
-        document.getElementById(id).classList.remove('active');
-    });
-    document.getElementById(stepId).classList.add('active');
-    if(stepId === 'loginStep2'){
-        if(_pendingPollTimer) clearInterval(_pendingPollTimer);
-        _pendingPollTimer = setInterval(silentCheckStatus, 5000);
-    } else {
-        if(_pendingPollTimer){ clearInterval(_pendingPollTimer); _pendingPollTimer = null; }
-    }
-}
-
-async function silentCheckStatus(){
-    if(!_pendingVerifiedPhone) return;
-    const userDoc = await db.collection('users').doc(_pendingVerifiedPhone).get().catch(()=>null);
-    if(userDoc && userDoc.exists){
-        if(_pendingPollTimer){ clearInterval(_pendingPollTimer); _pendingPollTimer = null; }
-        showToast('✅ Access approved! Loading…', true);
-        await resolveSessionForPhone(_pendingVerifiedPhone);
-        return;
-    }
-    const reqs = await db.collection('accessRequests').where('phone','==',_pendingVerifiedPhone).get()
-        .catch(function(){ return {docs:[]}; });
-    if(reqs.docs && reqs.docs.length && reqs.docs[0].data().status === 'denied'){
-        if(_pendingPollTimer){ clearInterval(_pendingPollTimer); _pendingPollTimer = null; }
-        showLoginStep('loginStep3');
-    }
-}
-
-function goBackToLogin(){
-    document.getElementById('loginPhone').value = '';
-    document.getElementById('loginOtp').value = '';
-    _confirmationResult = null;
-    _pendingVerifiedPhone = null;
-    _loginRoleIntent = null;
-    showLoginStep('loginStep0');
 }
 
 // ── Apply session UI ──────────────────────────────────────────────────────────
@@ -244,7 +105,7 @@ function applyUserSession(user){
         document.getElementById('memberHeader').style.display = 'none';
         document.getElementById('headerRoleBadge').textContent = user.role === 'supreme' ? 'SUPREME' : 'ADMIN';
         document.getElementById('headerRoleBadge').style.display = 'inline';
-        document.getElementById('accessReqBtn').style.display = 'inline-flex';
+        document.getElementById('accessReqBtn').style.display = (user.role === 'supreme') ? 'inline-flex' : 'none';
         document.getElementById('adminStatCards').style.display = '';
         document.getElementById('adminActionBtns').style.display = 'flex';
         document.getElementById('adminMemberSearch').style.display = '';
@@ -254,7 +115,6 @@ function applyUserSession(user){
         document.getElementById('adminQuickBtns').style.display = 'flex';
         document.getElementById('memberQrArea').style.display = 'none';
         updateUI();
-        pollPendingRequests();
         setTimeout(checkAndShowBackupReminder, 1200);
     } else {
         document.getElementById('adminHeader').style.display = 'none';
@@ -291,7 +151,7 @@ function applyUserSession(user){
 function handleLogout(){
     document.body.classList.remove('admin-mode');
     document.documentElement.classList.remove('admin-mode-early');
-    sessionStorage.removeItem('mychits_session');
+    clearSession();
     CURRENT_USER = null;
     firebase.auth().signOut().catch(function(){});
     document.getElementById('adminHeader').style.display = 'flex';
@@ -319,223 +179,84 @@ function handleLogout(){
     document.getElementById('memberLedgerData').innerHTML = '';
     document.getElementById('summarySearch').value = '';
     document.getElementById('summaryView').value = '';
-    _loginRoleIntent = null;
-    showLoginStep('loginStep0');
     document.getElementById('loginPhone').value = '';
+    document.getElementById('loginPassword').value = '';
+    _clearLoginError();
     document.getElementById('loginScreen').style.display = 'flex';
 }
 
-// ── Access Requests Panel ─────────────────────────────────────────────────────
-var _reqFilter = 'pending';
+// ── Supreme: create a new Admin (+ their org) ─────────────────────────────────
+// Uses the secondary Firebase app instance so Supreme's own session survives.
+async function createAdminAccount(){
+    if(!CURRENT_USER || CURRENT_USER.role !== 'supreme'){ showToast('🚫 Access denied', false); return; }
+    const orgName = document.getElementById('newAdminOrgName').value.trim();
+    const name    = document.getElementById('newAdminName').value.trim();
+    const phoneLocal = document.getElementById('newAdminPhone').value.trim();
+    const password = document.getElementById('newAdminPassword').value;
 
-async function openAccessRequests(){
-    _reqFilter = 'pending';
-    await renderAccessRequests();
-    openModal('accessModal');
-}
+    if(!orgName || !name){ showToast('❌ Enter org name and admin name', false); return; }
+    if(phoneLocal.length !== 10){ showToast('❌ Enter a valid 10-digit phone', false); return; }
+    if(!password || password.length < 6){ showToast('❌ Password must be at least 6 characters', false); return; }
 
-async function filterRequests(type){
-    _reqFilter = type;
-    ['pending','approved','all'].forEach(function(t){
-        var btn = document.getElementById('reqTab' + t.charAt(0).toUpperCase() + t.slice(1));
-        if(btn) btn.className = t === type ? 'btn-save' : 'btn-cancel';
-    });
-    await renderAccessRequests();
-}
-
-async function _accessRequestsQuery(){
-    if(CURRENT_USER && CURRENT_USER.role === 'supreme'){
-        return db.collection('accessRequests').orderBy('requestedAt','desc').get()
-            .catch(function(){ return db.collection('accessRequests').get(); });
-    }
-    return db.collection('accessRequests').where('orgId','==',CURRENT_USER.orgId).get();
-}
-
-async function renderAccessRequests(){
-    var list = document.getElementById('accessRequestsList');
-    list.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:16px;">Loading…</div>';
-    var snap = await _accessRequestsQuery();
-    var all      = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-    all.sort(function(a,b){ return (b.requestedAt||'').localeCompare(a.requestedAt||''); });
-    var filtered = _reqFilter === 'all' ? all : all.filter(function(r){ return r.status === _reqFilter; });
-
-    if(!filtered.length){
-        list.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;">No ' + (_reqFilter==='all'?'':_reqFilter) + ' requests</div>';
-        return;
-    }
-
-    list.innerHTML = filtered.map(function(r){
-        var dateStr = r.requestedAt ? new Date(r.requestedAt).toLocaleDateString('en-IN') : '—';
-        var phoneLocal = (r.phoneLocal || (r.phone||'').replace(/\D/g,'').slice(-10));
-        var actions = '';
-        if(r.status === 'pending'){
-            actions = '<button class="btn-approve" onclick="handleApprove(\'' + r.id + '\',\'' + r.phone + '\')">✅ Approve</button>' +
-                      '<button class="btn-deny" onclick="handleDeny(\'' + r.id + '\')">✕ Deny</button>';
-        } else if(r.status === 'approved'){
-            actions = '<span class="badge-approved">✅ Approved</span>' +
-                      '<button class="btn-deny" style="font-size:0.92rem;padding:4px 8px;" onclick="handleDeny(\'' + r.id + '\')">Revoke</button>';
-        } else {
-            actions = '<span class="badge-denied">🚫 Denied</span>' +
-                      '<button class="btn-approve" style="font-size:0.92rem;padding:4px 8px;" onclick="handleApprove(\'' + r.id + '\',\'' + r.phone + '\')">Re-approve</button>';
-        }
-        return '<div class="req-card">' +
-            '<div style="flex:1;min-width:0;">' +
-            '<div class="req-name">' + (r.name||'Unknown') + '</div>' +
-            '<div class="req-phone">📱 +91 ' + phoneLocal + ' &nbsp;·&nbsp; ' + dateStr + '</div>' +
-            '</div>' +
-            '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">' + actions + '</div>' +
-            '</div>';
-    }).join('');
-}
-
-// phone param here is the E.164 value stored on the accessRequests doc.
-async function handleApprove(reqId, phone){
-    const reqSnap = await db.collection('accessRequests').doc(reqId).get();
-    const req = reqSnap.data();
-    const orgId = req.orgId || CURRENT_USER.orgId;
-
-    const phoneLocal = phone.replace(/\D/g,'').slice(-10);
-    const members = await db.collection('members').where('orgId','==',orgId).get()
-        .then(s=>s.docs.map(d=>({id:d.id,...d.data()}))).catch(()=>[]);
-    const matched = members.find(function(m){ return (m.phone||'').replace(/\D/g,'').slice(-10) === phoneLocal; });
-
-    await db.collection('users').doc(phone).set({
-        role: 'member',
-        orgId: orgId,
-        memberId: matched ? matched.id : (req.memberId || null),
-        name: matched ? matched.name : req.name,
-        phone: phone,
-        createdAt: new Date().toISOString()
-    });
-
-    await db.collection('accessRequests').doc(reqId).update({status:'approved', approvedAt: new Date().toISOString()});
-    showToast('✅ Access approved!');
-    await renderAccessRequests();
-    await pollPendingRequests();
-}
-
-async function handleDeny(reqId){
-    await db.collection('accessRequests').doc(reqId).update({status:'denied', deniedAt: new Date().toISOString()});
-    showToast('🚫 Access denied');
-    await renderAccessRequests();
-    await pollPendingRequests();
-}
-
-// ── Poll pending requests (admin) ─────────────────────────────────────────────
-var _knownPendingIds = {};
-var _firstPoll = true;
-
-async function pollPendingRequests(){
-    if(!CURRENT_USER || (CURRENT_USER.role !== 'admin' && CURRENT_USER.role !== 'supreme')) return;
-    var q = CURRENT_USER.role === 'supreme'
-        ? db.collection('accessRequests').where('status','==','pending')
-        : db.collection('accessRequests').where('status','==','pending').where('orgId','==',CURRENT_USER.orgId);
-    var snap = await q.get().catch(function(){ return {docs:[]}; });
-    var count = snap.docs.length;
-
-    var newRequests = [];
-    snap.docs.forEach(function(d){
-        if(!_knownPendingIds[d.id]){
-            if(!_firstPoll) newRequests.push(Object.assign({id:d.id}, d.data()));
-            _knownPendingIds[d.id] = true;
-        }
-    });
-    Object.keys(_knownPendingIds).forEach(function(id){
-        if(!snap.docs.find(function(d){ return d.id === id; })){
-            delete _knownPendingIds[id];
-        }
-    });
-    _firstPoll = false;
-
-    var badge = document.getElementById('pendingCount');
-    if(count > 0){
-        badge.style.display = 'flex';
-        badge.textContent   = count;
-    } else {
-        badge.style.display = 'none';
-    }
-
-    newRequests.forEach(function(req){
-        playRequestSound();
-        showRequestBanner(req);
-    });
-}
-
-// ── Notification sound ────────────────────────────────────────────────────────
-function playRequestSound(){
+    showToast('⏳ Creating admin account…', true);
     try{
-        var ctx = new (window.AudioContext || window.webkitAudioContext)();
-        [[0, 880],[0.18, 1100],[0.36, 1320]].forEach(function(pair){
-            var delay = pair[0], freq = pair[1];
-            var osc  = ctx.createOscillator();
-            var gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-            gain.gain.setValueAtTime(0, ctx.currentTime + delay);
-            gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + delay + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.5);
-            osc.start(ctx.currentTime + delay);
-            osc.stop(ctx.currentTime + delay + 0.6);
+        const email = phoneToEmail(phoneLocal);
+        const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+        const newUid = cred.user.uid;
+        await secondaryAuth.signOut();
+
+        const orgRef = db.collection('orgs').doc();
+        const batch = db.batch();
+        batch.set(orgRef, {
+            name: orgName, ownerPhone: phoneLocal, status: 'active',
+            plan: 'default', createdAt: new Date().toISOString()
         });
-    } catch(e){}
+        batch.set(db.collection('users').doc(newUid), {
+            role: 'admin', orgId: orgRef.id, name: name, phone: phoneLocal,
+            createdAt: new Date().toISOString()
+        });
+        await batch.commit();
+
+        showToast('✅ Admin "' + name + '" created!');
+        closeModal('createAdminModal');
+        document.getElementById('newAdminOrgName').value = '';
+        document.getElementById('newAdminName').value = '';
+        document.getElementById('newAdminPhone').value = '';
+        document.getElementById('newAdminPassword').value = '';
+    }catch(err){
+        console.error(err);
+        if(err.code === 'auth/email-already-in-use'){
+            showToast('❌ That phone number already has a login', false);
+        } else {
+            showToast('❌ Could not create admin: ' + (err.message||'unknown error'), false);
+        }
+    }
 }
 
-// ── Floating request banner ───────────────────────────────────────────────────
-function showRequestBanner(req){
-    var name  = req.name  || 'Unknown';
-    var phoneLocal = (req.phoneLocal || (req.phone||'').replace(/\D/g,'').slice(-10));
-    var phone = req.phone || '';
-    var reqId = req.id;
-
-    if(!document.getElementById('akBannerStyle')){
-        var s = document.createElement('style');
-        s.id = 'akBannerStyle';
-        s.textContent = '@keyframes akSlideDown{from{opacity:0;transform:translateX(-50%) translateY(-16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
-        document.head.appendChild(s);
+// ── Admin: provision a Member's login (called from members.js on save) ───────
+// Uses the secondary Firebase app instance so the Admin's own session survives.
+// Returns the new user's uid, or null if it failed (member doc is still saved
+// either way — this only affects whether they can log in).
+async function provisionMemberLogin(phoneLocal, password, name, memberId){
+    if(!CURRENT_USER || (CURRENT_USER.role !== 'admin' && CURRENT_USER.role !== 'supreme')) return null;
+    if(!phoneLocal || phoneLocal.length !== 10 || !password) return null;
+    try{
+        const email = phoneToEmail(phoneLocal);
+        const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+        const newUid = cred.user.uid;
+        await secondaryAuth.signOut();
+        await db.collection('users').doc(newUid).set({
+            role: 'member', orgId: CURRENT_USER.orgId, memberId: memberId,
+            name: name, phone: phoneLocal, createdAt: new Date().toISOString()
+        });
+        return newUid;
+    }catch(err){
+        console.error(err);
+        if(err.code === 'auth/email-already-in-use'){
+            showToast('⚠️ Member saved, but that phone already has a login — ask them to use their existing password', false);
+        } else {
+            showToast('⚠️ Member saved, but login setup failed: ' + (err.message||'unknown error'), false);
+        }
+        return null;
     }
-
-    var banner = document.createElement('div');
-    banner.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);' +
-        'background:linear-gradient(135deg,#1c253b,#141b2d);' +
-        'border:1px solid rgba(243,156,18,0.5);border-radius:16px;padding:14px 16px;' +
-        'z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,0.6);' +
-        'min-width:280px;max-width:320px;animation:akSlideDown 0.3s ease;';
-
-    var row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:center;gap:12px;';
-
-    var bell = document.createElement('div');
-    bell.style.cssText = 'font-size:1.5rem;flex-shrink:0;';
-    bell.textContent = '🔔';
-
-    var txt = document.createElement('div');
-    txt.style.cssText = 'flex:1;min-width:0;';
-    txt.innerHTML = '<div style="font-size:0.78rem;font-weight:800;color:#f39c12;margin-bottom:2px;">New Access Request</div>' +
-        '<div style="font-size:0.85rem;font-weight:700;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + name + '</div>' +
-        '<div style="font-size:0.7rem;color:#8e9aaf;">📱 +91 ' + phoneLocal + '</div>';
-
-    var btns = document.createElement('div');
-    btns.style.cssText = 'display:flex;flex-direction:column;gap:5px;flex-shrink:0;';
-
-    var btnApprove = document.createElement('button');
-    btnApprove.style.cssText = 'background:linear-gradient(135deg,#10b981,#059669);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:0.72rem;font-weight:800;cursor:pointer;';
-    btnApprove.textContent = '✅ Approve';
-    btnApprove.onclick = function(){ handleApprove(reqId, phone); banner.remove(); };
-
-    var btnDeny = document.createElement('button');
-    btnDeny.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:6px 10px;font-size:0.72rem;font-weight:700;cursor:pointer;';
-    btnDeny.textContent = '✕ Deny';
-    btnDeny.onclick = function(){ handleDeny(reqId); banner.remove(); };
-
-    btns.appendChild(btnApprove);
-    btns.appendChild(btnDeny);
-    row.appendChild(bell);
-    row.appendChild(txt);
-    row.appendChild(btns);
-    banner.appendChild(row);
-    document.body.appendChild(banner);
-
-    setTimeout(function(){ if(banner.parentNode) banner.remove(); }, 12000);
 }

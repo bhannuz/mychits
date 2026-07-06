@@ -9,10 +9,20 @@ function genEnrollId(){ return 'enr_' + Date.now() + '_' + Math.random().toStrin
 
 let _enrollGroupOptions = [];
 
+function _syncMemberPasswordDefault(){
+    const eid = document.getElementById('editMemberId').value;
+    if(eid) return; // don't touch password on edits
+    const p = document.getElementById('mPhone').value.trim();
+    const pw = document.getElementById('mPassword');
+    if(p.length === 10) pw.placeholder = 'Default: ' + p + ' (or set your own)';
+}
+
 async function openAddMember(){
     if(!isAdmin()){showToast('🚫 Access denied',false);return;}
     document.getElementById('mName').value='';
     document.getElementById('mPhone').value='';
+    document.getElementById('mPassword').value='';
+    document.getElementById('mPasswordWrap').style.display='';
     document.getElementById('editMemberId').value='';
     document.getElementById('memberModalTitle').textContent='👤 Create Member';
     document.getElementById('deleteMemberArea').style.display='none';
@@ -29,6 +39,7 @@ async function openEditMember(mid){
     document.getElementById('editMemberId').value=m.id;
     document.getElementById('mName').value=m.name||'';
     document.getElementById('mPhone').value=m.phone||'';
+    document.getElementById('mPasswordWrap').style.display='none';
     document.getElementById('memberModalTitle').textContent='✏️ Edit Member';
     document.getElementById('deleteMemberArea').style.display='block';
     _enrollGroupOptions = await getCollection('groups');
@@ -126,11 +137,24 @@ async function saveMember(){
     const data = {name:n, phone:p, enrollments, groupIds};
     let memberId = eid;
     if(eid) await db.collection('members').doc(eid).update(data);
-    else { const ref = await db.collection('members').add({...data, orgId: CURRENT_USER.orgId}); memberId = ref.id; }
+    else {
+        const ref = await db.collection('members').add({...data, orgId: CURRENT_USER.orgId});
+        memberId = ref.id;
+        // New member — also provision their login, so they can log in immediately.
+        if(p && p.length === 10){
+            const pw = document.getElementById('mPassword').value.trim() || p;
+            await provisionMemberLogin(p, pw, n, memberId);
+        }
+    }
     bustCache('members');
 
     closeModal('memberModal');
-    showToast('✅ Member "' + n + '" saved with ' + enrollments.length + ' enrollment' + (enrollments.length!==1?'s':'') + '!');
+    if(!eid && p && p.length === 10){
+        const pwUsed = document.getElementById('mPassword').value.trim() || p;
+        showToast('✅ Member "' + n + '" saved! Login: +91' + p + ' / password: ' + pwUsed);
+    } else {
+        showToast('✅ Member "' + n + '" saved with ' + enrollments.length + ' enrollment' + (enrollments.length!==1?'s':'') + '!');
+    }
     updateUI();
 }
 
