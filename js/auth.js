@@ -10,6 +10,13 @@ const DEFAULT_ORG_ID = 'org_default';
 let _confirmationResult = null;
 let _recaptchaVerifier   = null;
 let _pendingVerifiedPhone = null; // E.164, set once OTP is confirmed
+let _loginRoleIntent = null;      // 'admin' | 'member' — chosen on loginStep0
+
+function chooseLoginRole(role){
+    _loginRoleIntent = role;
+    document.getElementById('loginPhone').value = '';
+    showLoginStep('loginStep1');
+}
 
 function saveSession(user){ sessionStorage.setItem('mychits_session', JSON.stringify(user)); }
 function loadSession(){ try{ return JSON.parse(sessionStorage.getItem('mychits_session'))||null; }catch(e){ return null; } }
@@ -92,7 +99,15 @@ async function resolveSessionForPhone(e164){
         return;
     }
 
-    // No profile yet — existing member or brand-new signup, both go through
+    // No profile yet.
+    if(_loginRoleIntent === 'admin'){
+        // Brand-new admin — send them to create their own org instead of
+        // filing a member access request.
+        showLoginStep('loginStep1c');
+        return;
+    }
+
+    // Member path: existing member or brand-new signup, both go through
     // an access request scoped to the default org for now.
     const members = await db.collection('members').where('orgId','==',DEFAULT_ORG_ID).get()
         .then(s=>s.docs.map(d=>({id:d.id,...d.data()}))).catch(()=>[]);
@@ -127,6 +142,37 @@ async function resolveSessionForPhone(e164){
     }
 }
 
+async function createNewOrgAndAdmin(){
+    if(!_pendingVerifiedPhone){ showToast('❌ Please verify your phone again', false); goBackToLogin(); return; }
+    const name = document.getElementById('newOrgName').value.trim();
+    if(!name){ showToast('❌ Enter your business name', false); return; }
+    showToast('⏳ Creating your account…', true);
+    try{
+        const orgRef = db.collection('orgs').doc();
+        const batch = db.batch();
+        batch.set(orgRef, {
+            name: name,
+            ownerPhone: _pendingVerifiedPhone,
+            status: 'active',
+            plan: 'default',
+            createdAt: new Date().toISOString()
+        });
+        batch.set(db.collection('users').doc(_pendingVerifiedPhone), {
+            role: 'admin',
+            orgId: orgRef.id,
+            name: name,
+            phone: _pendingVerifiedPhone,
+            createdAt: new Date().toISOString()
+        });
+        await batch.commit();
+        showToast('✅ Account created! Loading…', true);
+        await resolveSessionForPhone(_pendingVerifiedPhone);
+    }catch(err){
+        console.error(err);
+        showToast('❌ Could not create account. Try again.', false);
+    }
+}
+
 async function checkAccessStatus(){
     if(!_pendingVerifiedPhone){ goBackToLogin(); return; }
     const userDoc = await db.collection('users').doc(_pendingVerifiedPhone).get().catch(()=>null);
@@ -148,7 +194,7 @@ async function checkAccessStatus(){
 var _pendingPollTimer = null;
 
 function showLoginStep(stepId){
-    ['loginStep1','loginStep1b','loginStep2','loginStep3'].forEach(function(id){
+    ['loginStep0','loginStep1','loginStep1b','loginStep1c','loginStep2','loginStep3'].forEach(function(id){
         document.getElementById(id).classList.remove('active');
     });
     document.getElementById(stepId).classList.add('active');
@@ -182,7 +228,8 @@ function goBackToLogin(){
     document.getElementById('loginOtp').value = '';
     _confirmationResult = null;
     _pendingVerifiedPhone = null;
-    showLoginStep('loginStep1');
+    _loginRoleIntent = null;
+    showLoginStep('loginStep0');
 }
 
 // ── Apply session UI ──────────────────────────────────────────────────────────
@@ -272,7 +319,8 @@ function handleLogout(){
     document.getElementById('memberLedgerData').innerHTML = '';
     document.getElementById('summarySearch').value = '';
     document.getElementById('summaryView').value = '';
-    showLoginStep('loginStep1');
+    _loginRoleIntent = null;
+    showLoginStep('loginStep0');
     document.getElementById('loginPhone').value = '';
     document.getElementById('loginScreen').style.display = 'flex';
 }
