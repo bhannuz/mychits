@@ -107,16 +107,51 @@ function applyUserSession(user){
         document.getElementById('headerRoleBadge').style.display = 'inline';
         document.getElementById('accessReqBtn').style.display = (user.role === 'supreme') ? 'inline-flex' : 'none';
         document.getElementById('navSupreme').style.display = (user.role === 'supreme') ? '' : 'none';
-        document.getElementById('adminStatCards').style.display = '';
-        document.getElementById('adminActionBtns').style.display = 'flex';
-        document.getElementById('adminMemberSearch').style.display = '';
-        document.getElementById('memberLedgerArea').style.display = 'none';
-        document.getElementById('qrGeneratorSection').style.display = '';
-        document.getElementById('waReminderSection').style.display = '';
-        document.getElementById('adminQuickBtns').style.display = 'flex';
-        document.getElementById('memberQrArea').style.display = 'none';
-        updateUI();
-        setTimeout(checkAndShowBackupReminder, 1200);
+
+        if(user.role === 'supreme'){
+            // Supreme doesn't run their own chit fund — hide the operational
+            // tabs and repurpose "Groups" into an Admins list instead.
+            document.getElementById('navHome').style.display = 'none';
+            document.getElementById('navPlanner').style.display = 'none';
+            document.getElementById('navBackup').style.display = 'none';
+            document.getElementById('navSupreme').style.display = 'none'; // merged into Groups tab below
+            document.getElementById('adminStatCards').style.display = 'none';
+            document.getElementById('adminActionBtns').style.display = 'none';
+            document.getElementById('adminMemberSearch').style.display = 'none';
+            document.getElementById('memberLedgerArea').style.display = 'none';
+            document.getElementById('qrGeneratorSection').style.display = 'none';
+            document.getElementById('waReminderSection').style.display = 'none';
+            document.getElementById('adminQuickBtns').style.display = 'none';
+            document.getElementById('memberQrArea').style.display = 'none';
+
+            const navGroupsEl = document.getElementById('navGroups');
+            navGroupsEl.style.display = '';
+            navGroupsEl.innerHTML = '<div style="font-size:1.3rem;">👑</div><div>Admins</div>';
+            navGroupsEl.onclick = function(){ switchTab('supreme'); loadSupremeDashboard(); };
+
+            switchTab('supreme');
+            loadSupremeDashboard();
+        } else {
+            document.getElementById('navHome').style.display = '';
+            document.getElementById('navGroups').style.display = '';
+            document.getElementById('navPlanner').style.display = '';
+            document.getElementById('navBackup').style.display = '';
+
+            const navGroupsEl = document.getElementById('navGroups');
+            navGroupsEl.innerHTML = '<div style="font-size:1.3rem;">📂</div><div>Groups</div>';
+            navGroupsEl.onclick = function(){ switchTab('groups'); };
+
+            document.getElementById('adminStatCards').style.display = '';
+            document.getElementById('adminActionBtns').style.display = 'flex';
+            document.getElementById('adminMemberSearch').style.display = '';
+            document.getElementById('memberLedgerArea').style.display = 'none';
+            document.getElementById('qrGeneratorSection').style.display = '';
+            document.getElementById('waReminderSection').style.display = '';
+            document.getElementById('adminQuickBtns').style.display = 'flex';
+            document.getElementById('memberQrArea').style.display = 'none';
+            updateUI();
+            setTimeout(checkAndShowBackupReminder, 1200);
+        }
     } else {
         document.getElementById('adminHeader').style.display = 'none';
         document.getElementById('memberHeader').style.display = 'block';
