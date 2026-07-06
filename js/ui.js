@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — UI & NAVIGATION
+// MYCHITS — UI & NAVIGATION
 // Edit only this file when changing tab switching, toasts, modals, search, updateUI
 // ═══════════════════════════════════════════════════════════
 

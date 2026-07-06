@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — FIREBASE CONFIG
+// MYCHITS — FIREBASE CONFIG
 // ═══════════════════════════════════════════════════════════
 
 const firebaseConfig = {

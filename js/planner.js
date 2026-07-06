@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — CHIT PLANNER
+// MYCHITS — CHIT PLANNER
 // Edit only this file when changing the Chit Planner logic
 // ═══════════════════════════════════════════════════════════
 
@@ -513,7 +513,7 @@ function ncpPrint(){
         '<div style="display:flex;align-items:center;gap:10px;">'+
         '<img src="logo.png" style="width:48px;height:48px;border-radius:10px;object-fit:cover;" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'inline\'" />'+
         '<span style="display:none;font-size:22px;">🏆</span>'+
-        '<div><div class="brand">AK CHIT FUNDS</div><div style="font-size:9px;color:#888;">Chit Fund Management &middot; Group Schedule</div></div>'+
+        '<div><div class="brand">MYCHITS</div><div style="font-size:9px;color:#888;">Chit Fund Management &middot; Group Schedule</div></div>'+
         '</div>'+
         (memberName ? '<div style="margin-top:6px;font-size:12px;font-weight:800;">For: ' + memberName + '</div>' : '')+
         '</div>'+
@@ -535,7 +535,7 @@ function ncpPrint(){
         '<td style="color:#888;">—</td>'+
         '<td></td></tr></tfoot>'+
         '</table>'+
-        '<div class="ftr"><span>AK Chit Funds · Planner</span><span>'+name+' · '+today+'</span><span>CONFIDENTIAL</span></div>'+
+        '<div class="ftr"><span>MYCHITS · Planner</span><span>'+name+' · '+today+'</span><span>CONFIDENTIAL</span></div>'+
         '</div>';
 
     var overlay = document.getElementById('printOverlay');

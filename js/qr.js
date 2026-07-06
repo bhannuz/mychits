@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — QR GENERATOR + WHATSAPP REMINDERS
+// MYCHITS — QR GENERATOR + WHATSAPP REMINDERS
 // ═══════════════════════════════════════════════════════════
 
 var _standaloneQrState  = {};
@@ -174,7 +174,7 @@ function generateStandaloneQr(){
     if(!amount)             { showToast('❌ Enter amount', false); return; }
 
     var upiUrl = 'upi://pay?pa=' + encodeURIComponent(upiId)
-        + '&pn=' + encodeURIComponent('AK Chit Funds')
+        + '&pn=' + encodeURIComponent('MYCHITS')
         + '&am=' + amount.toFixed(2)
         + '&tn=' + encodeURIComponent(note)
         + '&cu=INR';
@@ -326,7 +326,7 @@ function downloadStandaloneQr(){
 async function shareStandaloneQr(){
     var s = _standaloneQrState;
     if(!s.upiUrl){ showToast('❌ Generate QR first', false); return; }
-    var text = 'AK Chit Funds — Payment Request\n\nNote: ' + s.note + (s.due?'\nDue: '+fmtDate(s.due):'') + '\nAmount: ₹' + s.amount.toLocaleString('en-IN') + '\nPay via UPI: ' + s.upiId;
+    var text = 'MYCHITS — Payment Request\n\nNote: ' + s.note + (s.due?'\nDue: '+fmtDate(s.due):'') + '\nAmount: ₹' + s.amount.toLocaleString('en-IN') + '\nPay via UPI: ' + s.upiId;
     if(navigator.share){ try{ await navigator.share({ title: 'Chit Payment', text: text }); return; } catch(e){} }
     if(navigator.clipboard){ navigator.clipboard.writeText(text).then(function(){ showToast('📋 Copied!'); }); }
 }
@@ -633,12 +633,12 @@ async function generateWaReminders(){
         } else {
             message =
                 'Dear ' + member.name + ',\n\n' +
-                'Greetings from *AK Chit Funds* 🙏\n\n' +
+                'Greetings from *MYCHITS* 🙏\n\n' +
                 'This is a friendly reminder for your pending chit payment(s):\n\n' +
                 groupLines + '\n\n' +
                 'Kindly pay at the earliest to avoid any inconvenience.\n' +
                 (contact ? 'For queries, contact: ' + contact + '\n' : '') +
-                '\nThank you 🏆\n*AK Chit Funds*';
+                '\nThank you 🏆\n*MYCHITS*';
         }
 
         // Build payment history for this member

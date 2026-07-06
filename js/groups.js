@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — GROUPS CRUD & TAB
+// MYCHITS — GROUPS CRUD & TAB
 // Edit only this file when changing create / edit / delete groups, groups tab rendering
 // ═══════════════════════════════════════════════════════════
 

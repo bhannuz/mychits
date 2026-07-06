@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — PRINT & PDF
+// MYCHITS — PRINT & PDF
 // Edit only this file when changing member statement print, group PDF generation
 // ═══════════════════════════════════════════════════════════
 
@@ -226,7 +226,7 @@ async function printMemberStatement(mid){
             <button class="close-btn" onclick="closePrintStatement()">✕ Close</button>
         </div>
         <div class="hdr">
-            <div style="display:flex;align-items:center;gap:10px;"><img src="logo.png" style="width:48px;height:48px;border-radius:10px;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:22px;">🏆</span><div><div class="brand">AK CHIT FUNDS</div><div class="brand-sub">Chit Fund Management &bull; Member Statement</div></div></div>
+            <div style="display:flex;align-items:center;gap:10px;"><img src="logo.png" style="width:48px;height:48px;border-radius:10px;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:22px;">🏆</span><div><div class="brand">MYCHITS</div><div class="brand-sub">Chit Fund Management &bull; Member Statement</div></div></div>
             <div><div class="doc-title">MEMBER STATEMENT</div><div class="doc-sub">Generated: ${today}</div></div>
         </div>
         <div class="mbox">
@@ -243,7 +243,7 @@ async function printMemberStatement(mid){
         <div class="sec-title">Payment History &mdash; Group Wise</div>
         ${groupSections||'<p style="color:#888;font-size:10px;">No payments recorded.</p>'}
         <div class="ftr">
-            <span>AK Chit Funds &bull; Admin Portal</span>
+            <span>MYCHITS &bull; Admin Portal</span>
             <span>Member: ${m.name} &bull; ${today}</span>
             <span>CONFIDENTIAL</span>
         </div>
@@ -415,7 +415,7 @@ async function generateGroupPDF(gid){
     </div>
     <div class="hdr">
         <div>
-            <div style="display:flex;align-items:center;gap:10px;"><img src="logo.png" style="width:48px;height:48px;border-radius:10px;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:22px;">🏆</span><div class="brand">AK CHIT FUNDS</div></div>
+            <div style="display:flex;align-items:center;gap:10px;"><img src="logo.png" style="width:48px;height:48px;border-radius:10px;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:22px;">🏆</span><div class="brand">MYCHITS</div></div>
             <div style="font-size:9px;color:#888;">Chit Fund Management &bull; Group Report</div>
         </div>
         <div style="text-align:right;">
@@ -454,7 +454,7 @@ async function generateGroupPDF(gid){
     <div class="sec-title" style="margin-top:20px;">Detailed Payment History — Member Wise</div>
     ${detailSections || '<p style="color:#888;font-size:10px;">No payments recorded.</p>'}
     <div class="ftr">
-        <span>AK Chit Funds &bull; Admin Portal</span>
+        <span>MYCHITS &bull; Admin Portal</span>
         <span>Group: ${g.name} &bull; ${today}</span>
         <span>CONFIDENTIAL</span>
     </div>

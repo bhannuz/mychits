@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — DATA BACKUP / RESTORE
+// MYCHITS — DATA BACKUP / RESTORE
 // Edit only this file when changing backup or restore logic
 // ═══════════════════════════════════════════════════════════
 
@@ -8,7 +8,7 @@ async function exportFullBackup(){
     const d={m:await getCollection('members'),g:await getCollection('groups'),p:await getCollection('payments')};
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
-    a.download=`AK_Chit_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    a.download=`MYCHITS_Backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     showToast('✅ Backup downloaded!');
 }
@@ -58,7 +58,7 @@ async function exportToExcel(){
     wsS['!cols']=[{wch:24},{wch:14},{wch:20},{wch:12},{wch:12},{wch:14},{wch:12},{wch:18},{wch:14}];
     XLSX.utils.book_append_sheet(wb,wsS,'Member Summary');
 
-    XLSX.writeFile(wb,`AKChitFunds_Export_${today}.xlsx`);
+    XLSX.writeFile(wb,`MYCHITS_Export_${today}.xlsx`);
     showToast('✅ Excel exported!');
 }
 

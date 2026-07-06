@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-// AK Chit Funds — MEMBER CRUD
+// MYCHITS — MEMBER CRUD
 // Edit only this file when changing create / edit / delete members and enrollments
 // ══════════════════════════════════════════════════════════
 

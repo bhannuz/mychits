@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — HELPERS & DATE UTILS
+// MYCHITS — HELPERS & DATE UTILS
 // Edit only this file when changing shared utilities, date helpers, due date logic
 // ═══════════════════════════════════════════════════════════
 

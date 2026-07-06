@@ -11,13 +11,13 @@ let _confirmationResult = null;
 let _recaptchaVerifier   = null;
 let _pendingVerifiedPhone = null; // E.164, set once OTP is confirmed
 
-function saveSession(user){ sessionStorage.setItem('akdf_session', JSON.stringify(user)); }
-function loadSession(){ try{ return JSON.parse(sessionStorage.getItem('akdf_session'))||null; }catch(e){ return null; } }
-function clearSession(){ sessionStorage.removeItem('akdf_session'); }
+function saveSession(user){ sessionStorage.setItem('mychits_session', JSON.stringify(user)); }
+function loadSession(){ try{ return JSON.parse(sessionStorage.getItem('mychits_session'))||null; }catch(e){ return null; } }
+function clearSession(){ sessionStorage.removeItem('mychits_session'); }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function initAuth(){
-    const saved = sessionStorage.getItem('akdf_session');
+    const saved = sessionStorage.getItem('mychits_session');
     if(saved){
         try{
             const u = JSON.parse(saved);
@@ -244,7 +244,7 @@ function applyUserSession(user){
 function handleLogout(){
     document.body.classList.remove('admin-mode');
     document.documentElement.classList.remove('admin-mode-early');
-    sessionStorage.removeItem('akdf_session');
+    sessionStorage.removeItem('mychits_session');
     CURRENT_USER = null;
     firebase.auth().signOut().catch(function(){});
     document.getElementById('adminHeader').style.display = 'flex';

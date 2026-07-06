@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// AK Chit Funds — PAYMENTS
+// MYCHITS — PAYMENTS
 // ═══════════════════════════════════════════════════════════
 
 // MULTI-MONTH HELPERS
@@ -592,7 +592,7 @@ let _managingFor = null;
 function getPaidByOptions() {
     if (_paidByOptions) return _paidByOptions;
     try {
-        const stored = localStorage.getItem('ak_paidby_options');
+        const stored = localStorage.getItem('mychits_paidby_options');
         _paidByOptions = stored ? JSON.parse(stored) : [...DEFAULT_PAID_BY];
     } catch(e) { _paidByOptions = [...DEFAULT_PAID_BY]; }
     return _paidByOptions;
@@ -606,10 +606,10 @@ async function loadPaidByOptions() {
         } else {
             _paidByOptions = [...DEFAULT_PAID_BY];
         }
-        localStorage.setItem('ak_paidby_options', JSON.stringify(_paidByOptions));
+        localStorage.setItem('mychits_paidby_options', JSON.stringify(_paidByOptions));
     } catch(e) {
         try {
-            const stored = localStorage.getItem('ak_paidby_options');
+            const stored = localStorage.getItem('mychits_paidby_options');
             _paidByOptions = stored ? JSON.parse(stored) : [...DEFAULT_PAID_BY];
         } catch(e2) { _paidByOptions = [...DEFAULT_PAID_BY]; }
     }
@@ -619,9 +619,9 @@ async function loadPaidByOptions() {
 async function savePaidByToStorage() {
     try {
         await db.collection('settings').doc(orgKey('paidByOptions')).set({ options: _paidByOptions, orgId: CURRENT_USER.orgId });
-        localStorage.setItem('ak_paidby_options', JSON.stringify(_paidByOptions));
+        localStorage.setItem('mychits_paidby_options', JSON.stringify(_paidByOptions));
     } catch(e) {
-        try { localStorage.setItem('ak_paidby_options', JSON.stringify(_paidByOptions)); } catch(e2){}
+        try { localStorage.setItem('mychits_paidby_options', JSON.stringify(_paidByOptions)); } catch(e2){}
         showToast('⚠️ Saved locally only — check connection', false);
     }
 }
