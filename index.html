@@ -74,6 +74,24 @@
     </div>
 </div>
 
+<!-- SUPREME: RESET PASSWORD MODAL -->
+<div id="resetPasswordModal" class="modal-overlay">
+    <div class="modal-content-custom">
+        <div class="modal-title">🔑 Reset Login Password</div>
+        <div style="font-size:0.85rem;color:white;font-weight:700;margin-bottom:4px;" id="resetPwTargetName"></div>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:14px;">Login email: <span id="resetPwEmail" style="color:#f39c12;"></span></div>
+        <div style="background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.3);border-radius:10px;padding:12px;font-size:0.8rem;color:var(--text-dim);line-height:1.5;">
+            Password resets for existing accounts currently need to be done manually:<br><br>
+            1. Firebase Console → Authentication → Users<br>
+            2. Find the email shown above<br>
+            3. Click the "⋮" menu next to it → Delete user<br>
+            4. Come back here and use "👑 New Admin" (or re-add the member) with the same phone number and a new password<br><br>
+            Ask me if you'd like a proper one-click "Reset Password" button built — it needs a small Cloud Function.
+        </div>
+        <button class="btn-cancel" style="width:100%;margin-top:14px;" onclick="closeModal('resetPasswordModal')">Close</button>
+    </div>
+</div>
+
 <div class="container py-2" style="padding-left:12px;padding-right:12px;">
     <!-- ADMIN HEADER -->
     <div id="adminHeader" class="app-header">
@@ -731,6 +749,14 @@
             </div>
         </div>
     </div>
+
+    <!-- SUPREME TAB (only visible to role=supreme) -->
+    <div id="supremeTab" class="tab-content">
+        <h5 class="mt-4 mb-3 text-warning text-center">🌐 All Organizations</h5>
+        <div id="supremeOrgList" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="text-align:center;color:var(--text-dim);padding:24px;">Loading…</div>
+        </div>
+    </div>
 </div>
 
 <!-- ══════ MODALS ══════ -->
@@ -1055,6 +1081,10 @@
     <div id="navBackup" class="nav-item" onclick="switchTab('backup')">
         <div style="font-size:1.3rem;">📊</div>
         <div>Statistics</div>
+    </div>
+    <div id="navSupreme" class="nav-item" onclick="switchTab('supreme'); loadSupremeDashboard();" style="display:none;">
+        <div style="font-size:1.3rem;">🌐</div>
+        <div>All Orgs</div>
     </div>
 </nav>
 <!-- ══ END BOTTOM NAV BAR ════════════════════════════════════════════════════ -->
