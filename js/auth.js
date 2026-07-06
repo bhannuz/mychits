@@ -251,6 +251,20 @@ async function loadSupremeDashboard(){
     const orgs = orgsSnap.docs.map(d=>({id:d.id, ...d.data()}));
     const admins = adminsSnap.docs.map(d=>({uid:d.id, ...d.data()}));
 
+    const activeCount = orgs.filter(o=>o.status==='active').length;
+    document.getElementById('supremeSummaryStrip').innerHTML = [
+        ['👑', admins.length, 'Admins'],
+        ['🏢', orgs.length, 'Orgs (' + activeCount + ' active)'],
+        ['📂', groups.length, 'Groups'],
+        ['👥', members.length, 'Members']
+    ].map(function(s){
+        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center;">' +
+            '<div style="font-size:1.1rem;">' + s[0] + '</div>' +
+            '<div style="font-weight:800;font-size:1.05rem;color:white;">' + s[1] + '</div>' +
+            '<div style="font-size:0.65rem;color:var(--text-dim);">' + s[2] + '</div>' +
+        '</div>';
+    }).join('');
+
     if(!orgs.length){
         listEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;">No organizations yet. Create one with "👑 New Admin".</div>';
         return;
