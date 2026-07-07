@@ -752,7 +752,10 @@
 
     <!-- SUPREME TAB (only visible to role=supreme) -->
     <div id="supremeTab" class="tab-content">
-        <h5 class="mt-4 mb-3 text-warning text-center">🌐 All Organizations</h5>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:10px;">
+            <h5 class="text-warning mb-0">🌐 All Organizations</h5>
+            <button class="btn-cancel" style="font-size:0.75rem;padding:6px 12px;" onclick="loadSupremeDashboard()">🔄 Refresh</button>
+        </div>
         <div id="supremeSummaryStrip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;"></div>
         <div id="supremeOrgList" style="display:flex;flex-direction:column;gap:10px;">
             <div style="text-align:center;color:var(--text-dim);padding:24px;">Loading…</div>
