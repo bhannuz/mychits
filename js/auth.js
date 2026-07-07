@@ -255,6 +255,7 @@ async function createAdminAccount(){
         await batch.commit();
 
         showToast('✅ Admin "' + name + '" created!');
+        if(typeof loadSupremeDashboard === 'function') loadSupremeDashboard();
         closeModal('createAdminModal');
         document.getElementById('newAdminOrgName').value = '';
         document.getElementById('newAdminName').value = '';
@@ -276,12 +277,19 @@ async function loadSupremeDashboard(){
     const listEl = document.getElementById('supremeOrgList');
     listEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;">Loading…</div>';
 
-    const [orgsSnap, adminsSnap, groups, members] = await Promise.all([
-        db.collection('orgs').get(),
-        db.collection('users').where('role','==','admin').get(),
-        getCollection('groups', true),
-        getCollection('members', true)
-    ]);
+    let orgsSnap, adminsSnap, groups, members;
+    try{
+        [orgsSnap, adminsSnap, groups, members] = await Promise.all([
+            db.collection('orgs').get(),
+            db.collection('users').where('role','==','admin').get(),
+            getCollection('groups', true),
+            getCollection('members', true)
+        ]);
+    }catch(err){
+        console.error(err);
+        listEl.innerHTML = '<div style="text-align:center;color:#f87171;padding:24px;">Could not load: ' + (err.message||'permission error') + '</div>';
+        return;
+    }
 
     const orgs = orgsSnap.docs.map(d=>({id:d.id, ...d.data()}));
     const admins = adminsSnap.docs.map(d=>({uid:d.id, ...d.data()}));
