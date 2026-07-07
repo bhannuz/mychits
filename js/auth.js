@@ -422,7 +422,25 @@ function openResetPasswordModal(uid, phone, name){
     _resetTargetPhone = phone;
     document.getElementById('resetPwTargetName').textContent = name + ' (+91 ' + phone + ')';
     document.getElementById('resetPwEmail').textContent = phone + '@mychits.local';
+    document.getElementById('resetPwNewPassword').value = '';
     openModal('resetPasswordModal');
+}
+
+async function submitPasswordReset(){
+    const newPassword = document.getElementById('resetPwNewPassword').value.trim();
+    if(!_resetTargetUid){ showToast('❌ No user selected', false); return; }
+    if(!newPassword || newPassword.length < 6){ showToast('❌ Password must be at least 6 characters', false); return; }
+
+    showToast('⏳ Resetting password…', true);
+    try{
+        const resetFn = firebase.functions().httpsCallable('resetUserPassword');
+        await resetFn({ uid: _resetTargetUid, newPassword: newPassword });
+        showToast('✅ Password reset! New password: ' + newPassword);
+        closeModal('resetPasswordModal');
+    }catch(err){
+        console.error(err);
+        showToast('❌ Reset failed: ' + (err.message||'unknown error'), false);
+    }
 }
 
 // Uses the secondary Firebase app instance so the Admin's own session survives.
