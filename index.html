@@ -92,6 +92,26 @@
     </div>
 </div>
 
+<!-- SUPREME: ORG DETAIL DRILL-DOWN MODAL -->
+<div id="orgDetailModal" class="modal-overlay">
+    <div class="modal-content-custom">
+        <div class="modal-title" id="orgDetailTitle">Organization</div>
+        <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:12px;" id="orgDetailSubtitle"></div>
+        <div id="orgDetailStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;"></div>
+
+        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">💳 Collections by Payment Mode</div>
+        <div id="orgDetailModeBreakdown" style="margin-bottom:16px;"></div>
+
+        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">📂 Groups</div>
+        <div id="orgDetailGroups" style="max-height:140px;overflow-y:auto;margin-bottom:16px;"></div>
+
+        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">👥 Members (paid to date)</div>
+        <div id="orgDetailMembers" style="max-height:180px;overflow-y:auto;margin-bottom:12px;"></div>
+
+        <button class="btn-cancel" style="width:100%;" onclick="closeModal('orgDetailModal')">Close</button>
+    </div>
+</div>
+
 <div class="container py-2" style="padding-left:12px;padding-right:12px;">
     <!-- ADMIN HEADER -->
     <div id="adminHeader" class="app-header">
