@@ -272,18 +272,21 @@ async function createAdminAccount(){
 }
 
 // ── Supreme: dashboard of all orgs/admins ─────────────────────────────────────
+let _supremeCache = null;
+
 async function loadSupremeDashboard(){
     if(!CURRENT_USER || CURRENT_USER.role !== 'supreme') return;
     const listEl = document.getElementById('supremeOrgList');
     listEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;">Loading…</div>';
 
-    let orgsSnap, adminsSnap, groups, members;
+    let orgsSnap, adminsSnap, groups, members, payments;
     try{
-        [orgsSnap, adminsSnap, groups, members] = await Promise.all([
+        [orgsSnap, adminsSnap, groups, members, payments] = await Promise.all([
             db.collection('orgs').get(),
             db.collection('users').where('role','==','admin').get(),
             getCollection('groups', true),
-            getCollection('members', true)
+            getCollection('members', true),
+            getCollection('payments', true)
         ]);
     }catch(err){
         console.error(err);
@@ -293,6 +296,7 @@ async function loadSupremeDashboard(){
 
     const orgs = orgsSnap.docs.map(d=>({id:d.id, ...d.data()}));
     const admins = adminsSnap.docs.map(d=>({uid:d.id, ...d.data()}));
+    _supremeCache = {orgs, admins, groups, members, payments};
 
     const activeCount = orgs.filter(o=>o.status==='active').length;
     document.getElementById('supremeSummaryStrip').innerHTML = [
@@ -318,7 +322,7 @@ async function loadSupremeDashboard(){
         const gCount = groups.filter(g=>g.orgId===org.id).length;
         const mCount = members.filter(m=>m.orgId===org.id).length;
         const statusColor = org.status === 'active' ? '#10b981' : '#ef4444';
-        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px;">' +
+        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:14px;padding:14px;cursor:pointer;" onclick="openOrgDetail(\'' + org.id + '\')">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
                 '<div>' +
                     '<div style="font-weight:800;font-size:1rem;color:white;">' + (org.name||'Unnamed') + '</div>' +
@@ -330,9 +334,79 @@ async function loadSupremeDashboard(){
                 '<span>📂 ' + gCount + ' group' + (gCount!==1?'s':'') + '</span>' +
                 '<span>👥 ' + mCount + ' member' + (mCount!==1?'s':'') + '</span>' +
             '</div>' +
-            (admin ? '<button class="btn-cancel" style="width:100%;margin-top:10px;font-size:0.78rem;padding:7px;" onclick="openResetPasswordModal(\'' + admin.uid + '\',\'' + admin.phone + '\',\'' + (admin.name||'').replace(/'/g,"\\'") + '\')">🔑 Reset Login Password</button>' : '') +
+            '<div style="font-size:0.72rem;color:#6366f1;margin-top:8px;font-weight:700;">Tap for full details →</div>' +
+            (admin ? '<button class="btn-cancel" style="width:100%;margin-top:10px;font-size:0.78rem;padding:7px;" onclick="event.stopPropagation();openResetPasswordModal(\'' + admin.uid + '\',\'' + admin.phone + '\',\'' + (admin.name||'').replace(/'/g,"\\'") + '\')">🔑 Reset Login Password</button>' : '') +
         '</div>';
     }).join('');
+}
+
+// ── Supreme: drill-down detail for one org ────────────────────────────────────
+function openOrgDetail(orgId){
+    if(!_supremeCache) return;
+    const {orgs, admins, groups, members, payments} = _supremeCache;
+    const org = orgs.find(o=>o.id===orgId); if(!org) return;
+    const admin = admins.find(a=>a.orgId===orgId);
+    const orgGroups   = groups.filter(g=>g.orgId===orgId);
+    const orgMembers  = members.filter(m=>m.orgId===orgId);
+    const orgPayments = payments.filter(p=>p.orgId===orgId);
+
+    const totalCollected = orgPayments.reduce((s,p)=>s+(Number(p.paid)||0), 0);
+    const totalBalance   = orgPayments.reduce((s,p)=>s+(Number(p.balance)||0), 0);
+
+    // Breakdown by payment mode ("paidBy")
+    const modeMap = {};
+    orgPayments.forEach(function(p){
+        const mode = p.paidBy || 'Unspecified';
+        modeMap[mode] = (modeMap[mode]||0) + (Number(p.paid)||0);
+    });
+    const modeRows = Object.keys(modeMap).sort(function(a,b){ return modeMap[b]-modeMap[a]; });
+
+    document.getElementById('orgDetailTitle').textContent = org.name || 'Unnamed Org';
+    document.getElementById('orgDetailSubtitle').textContent =
+        '👤 ' + (admin?admin.name:'—') + ' · 📱 +91 ' + (admin?admin.phone:(org.ownerPhone||'—'));
+
+    document.getElementById('orgDetailStats').innerHTML = [
+        ['📂', orgGroups.length, 'Groups'],
+        ['👥', orgMembers.length, 'Members'],
+        ['💰', '₹' + totalCollected.toLocaleString('en-IN'), 'Collected'],
+        ['⚠️', '₹' + totalBalance.toLocaleString('en-IN'), 'Balance']
+    ].map(function(s){
+        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center;">' +
+            '<div style="font-size:1.1rem;">' + s[0] + '</div>' +
+            '<div style="font-weight:800;font-size:0.95rem;color:white;">' + s[1] + '</div>' +
+            '<div style="font-size:0.62rem;color:var(--text-dim);">' + s[2] + '</div>' +
+        '</div>';
+    }).join('');
+
+    document.getElementById('orgDetailModeBreakdown').innerHTML = modeRows.length
+        ? modeRows.map(function(mode){
+            return '<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:5px 0;border-bottom:1px solid var(--border);">' +
+                '<span style="color:var(--text-dim);">' + mode + '</span>' +
+                '<span style="color:white;font-weight:700;">₹' + modeMap[mode].toLocaleString('en-IN') + '</span>' +
+            '</div>';
+        }).join('')
+        : '<div style="color:var(--text-dim);font-size:0.8rem;">No payments recorded yet</div>';
+
+    document.getElementById('orgDetailGroups').innerHTML = orgGroups.length
+        ? orgGroups.map(function(g){
+            return '<div style="font-size:0.82rem;padding:6px 0;border-bottom:1px solid var(--border);">' +
+                '<span style="color:white;font-weight:700;">' + (g.name||'Unnamed') + '</span>' +
+                '<span style="color:var(--text-dim);"> — ₹' + (g.chitValue||g.amount||'—') + '</span>' +
+            '</div>';
+        }).join('')
+        : '<div style="color:var(--text-dim);font-size:0.8rem;">No groups yet</div>';
+
+    document.getElementById('orgDetailMembers').innerHTML = orgMembers.length
+        ? orgMembers.map(function(m){
+            const paidTotal = orgPayments.filter(p=>p.memberId===m.id).reduce((s,p)=>s+(Number(p.paid)||0),0);
+            return '<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:6px 0;border-bottom:1px solid var(--border);">' +
+                '<span style="color:white;">' + (m.name||'Unnamed') + ' <span style="color:var(--text-dim);">+91 ' + (m.phone||'—') + '</span></span>' +
+                '<span style="color:#10b981;font-weight:700;">₹' + paidTotal.toLocaleString('en-IN') + '</span>' +
+            '</div>';
+        }).join('')
+        : '<div style="color:var(--text-dim);font-size:0.8rem;">No members yet</div>';
+
+    openModal('orgDetailModal');
 }
 
 // ── Supreme: reset an Admin/Member's password ─────────────────────────────────
