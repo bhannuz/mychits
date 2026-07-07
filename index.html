@@ -25,6 +25,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-functions-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -74,21 +75,16 @@
     </div>
 </div>
 
-<!-- SUPREME: RESET PASSWORD MODAL -->
+<!-- SUPREME/ADMIN: RESET PASSWORD MODAL -->
 <div id="resetPasswordModal" class="modal-overlay">
     <div class="modal-content-custom">
         <div class="modal-title">🔑 Reset Login Password</div>
         <div style="font-size:0.85rem;color:white;font-weight:700;margin-bottom:4px;" id="resetPwTargetName"></div>
-        <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:14px;">Login email: <span id="resetPwEmail" style="color:#f39c12;"></span></div>
-        <div style="background:rgba(243,156,18,.1);border:1px solid rgba(243,156,18,.3);border-radius:10px;padding:12px;font-size:0.8rem;color:var(--text-dim);line-height:1.5;">
-            Password resets for existing accounts currently need to be done manually:<br><br>
-            1. Firebase Console → Authentication → Users<br>
-            2. Find the email shown above<br>
-            3. Click the "⋮" menu next to it → Delete user<br>
-            4. Come back here and use "👑 New Admin" (or re-add the member) with the same phone number and a new password<br><br>
-            Ask me if you'd like a proper one-click "Reset Password" button built — it needs a small Cloud Function.
-        </div>
-        <button class="btn-cancel" style="width:100%;margin-top:14px;" onclick="closeModal('resetPasswordModal')">Close</button>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-bottom:14px;">Login: <span id="resetPwEmail" style="color:#f39c12;"></span></div>
+        <label class="form-label-small">New Password</label>
+        <input type="text" id="resetPwNewPassword" class="form-input" placeholder="Set a new password (6+ characters)">
+        <button class="btn-save" onclick="submitPasswordReset()">🔑 Reset Password</button>
+        <button class="btn-cancel" onclick="closeModal('resetPasswordModal')">Cancel</button>
     </div>
 </div>
 
@@ -803,6 +799,7 @@
         <button type="button" onclick="addEnrollmentRow()" style="background:rgba(243,156,18,.12);border:1px dashed rgba(243,156,18,.4);color:#f39c12;border-radius:10px;padding:8px;width:100%;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:12px;">+ Add Group Enrollment</button>
         <button class="btn-save" onclick="saveMember()">✓ Save Member</button>
         <div id="deleteMemberArea" style="display:none;">
+            <button class="btn-cancel" style="width:100%;margin-bottom:8px;" onclick="openResetMemberPassword()">🔑 Reset Login Password</button>
             <button class="btn-danger-full" onclick="deleteMemberFromModal()">🗑 Delete Member</button>
         </div>
         <button class="btn-cancel" onclick="closeModal('memberModal')">Cancel</button>
