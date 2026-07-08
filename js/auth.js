@@ -110,10 +110,10 @@ function applyUserSession(user){
 
         if(user.role === 'supreme'){
             // Supreme doesn't run their own chit fund — hide the operational
-            // tabs and repurpose "Groups" into an Admins list instead.
+            // tabs, repurpose "Groups" into an Admins list, and "Statistics"
+            // into platform-wide stats.
             document.getElementById('navHome').style.display = 'none';
             document.getElementById('navPlanner').style.display = 'none';
-            document.getElementById('navBackup').style.display = 'none';
             document.getElementById('navSupreme').style.display = 'none'; // merged into Groups tab below
             document.getElementById('adminStatCards').style.display = 'none';
             document.getElementById('adminActionBtns').style.display = 'none';
@@ -129,6 +129,11 @@ function applyUserSession(user){
             navGroupsEl.innerHTML = '<div style="font-size:1.3rem;">👑</div><div>Admins</div>';
             navGroupsEl.onclick = function(){ switchTab('supreme'); loadSupremeDashboard(); };
 
+            const navBackupEl = document.getElementById('navBackup');
+            navBackupEl.style.display = '';
+            navBackupEl.innerHTML = '<div style="font-size:1.3rem;">📊</div><div>Statistics</div>';
+            navBackupEl.onclick = function(){ switchTab('supremeStats'); loadSupremeStats(); };
+
             switchTab('supreme');
             loadSupremeDashboard();
         } else {
@@ -140,6 +145,10 @@ function applyUserSession(user){
             const navGroupsEl = document.getElementById('navGroups');
             navGroupsEl.innerHTML = '<div style="font-size:1.3rem;">📂</div><div>Groups</div>';
             navGroupsEl.onclick = function(){ switchTab('groups'); };
+
+            const navBackupEl = document.getElementById('navBackup');
+            navBackupEl.innerHTML = '<div style="font-size:1.3rem;">📊</div><div>Statistics</div>';
+            navBackupEl.onclick = function(){ switchTab('backup'); };
 
             document.getElementById('adminStatCards').style.display = '';
             document.getElementById('adminActionBtns').style.display = 'flex';
@@ -341,6 +350,81 @@ async function loadSupremeDashboard(){
 }
 
 // ── Supreme: drill-down detail for one org ────────────────────────────────────
+// ── Supreme: platform-wide statistics tab ──────────────────────────────────────
+async function loadSupremeStats(){
+    if(!CURRENT_USER || CURRENT_USER.role !== 'supreme') return;
+    const totalsEl = document.getElementById('supremeStatsTotals');
+    const boardEl  = document.getElementById('supremeStatsLeaderboard');
+    totalsEl.innerHTML = '';
+    boardEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;">Loading…</div>';
+
+    // Reuse the cache from the Admins tab if it's already loaded this session,
+    // otherwise fetch fresh.
+    if(!_supremeCache){
+        await loadSupremeDashboard();
+    }
+    if(!_supremeCache) return;
+    const {orgs, admins, groups, members, payments} = _supremeCache;
+
+    const platformCollected = payments.reduce((s,p)=>s+(Number(p.paid)||0), 0);
+    const platformBalance   = payments.reduce((s,p)=>s+(Number(p.balance)||0), 0);
+
+    totalsEl.innerHTML = [
+        ['👑', admins.length, 'Total Admins'],
+        ['🏢', orgs.length, 'Total Orgs'],
+        ['👥', members.length, 'Total Members'],
+        ['📂', groups.length, 'Total Groups'],
+        ['💰', '₹' + platformCollected.toLocaleString('en-IN'), 'Platform Collected'],
+        ['⚠️', '₹' + platformBalance.toLocaleString('en-IN'), 'Platform Balance']
+    ].map(function(s){
+        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:10px;text-align:center;">' +
+            '<div style="font-size:1.1rem;">' + s[0] + '</div>' +
+            '<div style="font-weight:800;font-size:0.95rem;color:white;">' + s[1] + '</div>' +
+            '<div style="font-size:0.62rem;color:var(--text-dim);">' + s[2] + '</div>' +
+        '</div>';
+    }).join('');
+
+    // Leaderboard: one row per org, sorted by total collected (desc)
+    const rows = orgs.map(function(org){
+        const admin = admins.find(a=>a.orgId===org.id);
+        const oGroups   = groups.filter(g=>g.orgId===org.id).length;
+        const oMembers  = members.filter(m=>m.orgId===org.id).length;
+        const oPayments = payments.filter(p=>p.orgId===org.id);
+        const collected = oPayments.reduce((s,p)=>s+(Number(p.paid)||0), 0);
+        return {org, admin, oGroups, oMembers, collected};
+    }).sort(function(a,b){ return b.collected - a.collected; });
+
+    boardEl.innerHTML = rows.length ? rows.map(function(r, idx){
+        const medal = idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':(idx+1)+'.';
+        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;" onclick="openOrgDetail(\'' + r.org.id + '\')">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                '<div>' +
+                    '<span style="font-weight:800;color:#f39c12;margin-right:6px;">' + medal + '</span>' +
+                    '<span style="font-weight:800;color:white;">' + (r.org.name||'Unnamed') + '</span>' +
+                    '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">👤 ' + (r.admin?r.admin.name:'—') + ' · 📂 ' + r.oGroups + ' · 👥 ' + r.oMembers + '</div>' +
+                '</div>' +
+                '<div style="font-weight:800;color:#10b981;">₹' + r.collected.toLocaleString('en-IN') + '</div>' +
+            '</div>' +
+        '</div>';
+    }).join('') : '<div style="text-align:center;color:var(--text-dim);padding:24px;">No organizations yet</div>';
+
+    // Platform-wide payment mode breakdown
+    const modeMap = {};
+    payments.forEach(function(p){
+        const mode = p.paidBy || 'Unspecified';
+        modeMap[mode] = (modeMap[mode]||0) + (Number(p.paid)||0);
+    });
+    const modeRows = Object.keys(modeMap).sort(function(a,b){ return modeMap[b]-modeMap[a]; });
+    document.getElementById('supremeStatsModeBreakdown').innerHTML = modeRows.length
+        ? modeRows.map(function(mode){
+            return '<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:6px 0;border-bottom:1px solid var(--border);">' +
+                '<span style="color:var(--text-dim);">' + mode + '</span>' +
+                '<span style="color:white;font-weight:700;">₹' + modeMap[mode].toLocaleString('en-IN') + '</span>' +
+            '</div>';
+        }).join('')
+        : '<div style="color:var(--text-dim);font-size:0.8rem;">No payments recorded yet</div>';
+}
+
 function openOrgDetail(orgId){
     if(!_supremeCache) return;
     const {orgs, admins, groups, members, payments} = _supremeCache;
