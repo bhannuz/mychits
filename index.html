@@ -777,6 +777,19 @@
             <div style="text-align:center;color:var(--text-dim);padding:24px;">Loading…</div>
         </div>
     </div>
+
+    <!-- SUPREME STATISTICS TAB (only visible to role=supreme) -->
+    <div id="supremeStatsTab" class="tab-content">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:10px;">
+            <h5 class="text-warning mb-0">📊 Platform Statistics</h5>
+            <button class="btn-cancel" style="font-size:0.75rem;padding:6px 12px;" onclick="loadSupremeStats()">🔄 Refresh</button>
+        </div>
+        <div id="supremeStatsTotals" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;"></div>
+        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🏆 Admins by Collections</div>
+        <div id="supremeStatsLeaderboard" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">💳 Platform-wide Payment Modes</div>
+        <div id="supremeStatsModeBreakdown"></div>
+    </div>
 </div>
 
 <!-- ══════ MODALS ══════ -->
