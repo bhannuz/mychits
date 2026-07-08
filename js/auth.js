@@ -351,47 +351,38 @@ async function loadSupremeDashboard(){
 
 // ── Supreme: drill-down detail for one org ────────────────────────────────────
 // ── Supreme: platform-wide statistics tab ──────────────────────────────────────
-let _supremeStatsFiltered = null;
+let _supremeStatsData = null;
 
 function closeSupremeStatsDetail(){
     document.getElementById('supremeStatsDetailPanel').style.display = 'none';
 }
 
 function showSupremeStatsDetail(type){
-    if(!_supremeStatsFiltered) return;
-    const {groups, members, payments} = _supremeStatsFiltered;
+    if(!_supremeStatsData) return;
+    const {groups, members, payments} = _supremeStatsData;
     const panel = document.getElementById('supremeStatsDetailPanel');
     const title = document.getElementById('supremeStatsDetailTitle');
     const list  = document.getElementById('supremeStatsDetailList');
 
     if(type === 'groups'){
-        title.textContent = '📂 Groups (' + groups.length + ')';
+        title.textContent = '📂 All Groups (' + groups.length + ')';
         list.innerHTML = groups.length ? groups.map(function(g){
-            return '<div style="font-size:0.82rem;padding:6px 0;border-bottom:1px solid var(--border);">' +
+            return '<div style="font-size:0.82rem;padding:7px 0;border-bottom:1px solid var(--border);">' +
                 '<span style="color:white;font-weight:700;">' + (g.name||'Unnamed') + '</span>' +
                 '<span style="color:var(--text-dim);"> — ₹' + (g.chitValue||g.amount||'—') + '</span>' +
             '</div>';
-        }).join('') : '<div style="color:var(--text-dim);font-size:0.8rem;">No groups match these filters</div>';
+        }).join('') : '<div style="color:var(--text-dim);font-size:0.8rem;">No groups yet</div>';
     } else if(type === 'members'){
-        title.textContent = '👥 Members (' + members.length + ')';
+        title.textContent = '👥 All Members (' + members.length + ')';
         list.innerHTML = members.length ? members.map(function(m){
             const paidTotal = payments.filter(p=>p.memberId===m.id).reduce((s,p)=>s+(Number(p.paid)||0),0);
-            return '<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:6px 0;border-bottom:1px solid var(--border);">' +
+            return '<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:7px 0;border-bottom:1px solid var(--border);">' +
                 '<span style="color:white;">' + (m.name||'Unnamed') + ' <span style="color:var(--text-dim);">+91 ' + (m.phone||'—') + '</span></span>' +
                 '<span style="color:#10b981;font-weight:700;">₹' + paidTotal.toLocaleString('en-IN') + '</span>' +
             '</div>';
-        }).join('') : '<div style="color:var(--text-dim);font-size:0.8rem;">No members match these filters</div>';
+        }).join('') : '<div style="color:var(--text-dim);font-size:0.8rem;">No members yet</div>';
     }
     panel.style.display = '';
-}
-
-function clearSupremeStatsFilters(){
-    document.getElementById('supStatsFrom').value = '';
-    document.getElementById('supStatsTo').value = '';
-    document.getElementById('supStatsStatus').value = 'all';
-    document.getElementById('supStatsSort').value = 'collected';
-    document.getElementById('supStatsAdmin').value = 'all';
-    loadSupremeStats();
 }
 
 async function loadSupremeStats(){
@@ -400,71 +391,38 @@ async function loadSupremeStats(){
     const boardEl  = document.getElementById('supremeStatsLeaderboard');
     totalsEl.innerHTML = '';
     boardEl.innerHTML = '<div style="text-align:center;color:var(--text-dim);padding:24px;">Loading…</div>';
+    closeSupremeStatsDetail();
 
     if(!_supremeCache){
         await loadSupremeDashboard();
     }
     if(!_supremeCache) return;
-    let {orgs, admins, groups, members, payments} = _supremeCache;
-
-    // Populate/preserve the admin dropdown
-    const adminSelect = document.getElementById('supStatsAdmin');
-    const prevSelected = adminSelect.value;
-    adminSelect.innerHTML = '<option value="all">All Admins</option>' +
-        admins.map(a => '<option value="' + a.uid + '">' + (a.name||a.phone) + '</option>').join('');
-    if(admins.some(a=>a.uid===prevSelected)) adminSelect.value = prevSelected;
-
-    const fromDate = document.getElementById('supStatsFrom').value; // 'YYYY-MM-DD' or ''
-    const toDate   = document.getElementById('supStatsTo').value;
-    const statusFilter = document.getElementById('supStatsStatus').value;
-    const sortBy   = document.getElementById('supStatsSort').value;
-    const adminFilter = document.getElementById('supStatsAdmin').value;
-
-    // Filter orgs by status
-    if(statusFilter !== 'all'){
-        orgs = orgs.filter(o => (o.status||'active') === statusFilter);
-    }
-    // Filter to a single admin's org
-    if(adminFilter !== 'all'){
-        const selAdmin = admins.find(a=>a.uid===adminFilter);
-        orgs = selAdmin ? orgs.filter(o => o.id === selAdmin.orgId) : [];
-    }
-    const orgIds = new Set(orgs.map(o=>o.id));
-    groups  = groups.filter(g => orgIds.has(g.orgId));
-    members = members.filter(m => orgIds.has(m.orgId));
-    payments = payments.filter(p => orgIds.has(p.orgId));
-
-    // Filter payments by date range
-    if(fromDate) payments = payments.filter(p => (p.date||'') >= fromDate);
-    if(toDate)   payments = payments.filter(p => (p.date||'') <= toDate);
-
-    // Keep the currently-filtered groups/members available for the click-through detail panel
-    _supremeStatsFiltered = {groups, members, payments};
-    closeSupremeStatsDetail();
+    const {orgs, admins, groups, members, payments} = _supremeCache;
+    _supremeStatsData = {groups, members, payments};
 
     const platformCollected = payments.reduce((s,p)=>s+(Number(p.paid)||0), 0);
     const platformBalance   = payments.reduce((s,p)=>s+(Number(p.balance)||0), 0);
 
     totalsEl.innerHTML = [
-        ['👑', admins.filter(a=>orgIds.has(a.orgId)).length, 'Admins', null],
+        ['👑', admins.length, 'Admins', null],
         ['🏢', orgs.length, 'Orgs', null],
+        ['💰', '₹' + platformCollected.toLocaleString('en-IN'), 'Collected', null],
         ['👥', members.length, 'Members', 'members'],
         ['📂', groups.length, 'Groups', 'groups'],
-        ['💰', '₹' + platformCollected.toLocaleString('en-IN'), 'Collected' + (fromDate||toDate?' (filtered)':''), null],
-        ['⚠️', '₹' + platformBalance.toLocaleString('en-IN'), 'Balance' + (fromDate||toDate?' (filtered)':''), null]
+        ['⚠️', '₹' + platformBalance.toLocaleString('en-IN'), 'Balance', null]
     ].map(function(s){
-        const clickable = s[3] ? ' cursor:pointer;' : '';
-        const onclick = s[3] ? ' onclick="showSupremeStatsDetail(\'' + s[3] + '\')"' : '';
-        return '<div style="flex:0 0 88px;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:10px 6px;text-align:center;' + clickable + '"' + onclick + '>' +
-            '<div style="font-size:1.1rem;">' + s[0] + '</div>' +
-            '<div style="font-weight:800;font-size:0.9rem;color:white;">' + s[1] + '</div>' +
-            '<div style="font-size:0.6rem;color:var(--text-dim);line-height:1.2;">' + s[2] + '</div>' +
-            (s[3] ? '<div style="font-size:0.58rem;color:#6366f1;font-weight:700;margin-top:2px;">tap ↓</div>' : '') +
+        const isClickable = !!s[3];
+        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center;' +
+                (isClickable ? 'cursor:pointer;' : '') + '"' +
+                (isClickable ? ' onclick="showSupremeStatsDetail(\'' + s[3] + '\')"' : '') + '>' +
+            '<div style="font-size:1.3rem;margin-bottom:4px;">' + s[0] + '</div>' +
+            '<div style="font-weight:800;font-size:1rem;color:white;">' + s[1] + '</div>' +
+            '<div style="font-size:0.68rem;color:var(--text-dim);margin-top:2px;">' + s[2] + '</div>' +
         '</div>';
     }).join('');
 
-    // Leaderboard: one row per (filtered) org
-    let rows = orgs.map(function(org){
+    // Leaderboard: every org, ranked by total collected
+    const rows = orgs.map(function(org){
         const admin = admins.find(a=>a.orgId===org.id);
         const oGroups   = groups.filter(g=>g.orgId===org.id).length;
         const oMembers  = members.filter(m=>m.orgId===org.id).length;
@@ -472,23 +430,16 @@ async function loadSupremeStats(){
         const collected = oPayments.reduce((s,p)=>s+(Number(p.paid)||0), 0);
         const balance   = oPayments.reduce((s,p)=>s+(Number(p.balance)||0), 0);
         return {org, admin, oGroups, oMembers, collected, balance};
-    });
-
-    if(sortBy === 'name'){
-        rows.sort((a,b) => (a.org.name||'').localeCompare(b.org.name||''));
-    } else {
-        const key = sortBy === 'members' ? 'oMembers' : sortBy === 'groups' ? 'oGroups' : sortBy;
-        rows.sort((a,b) => b[key] - a[key]);
-    }
+    }).sort((a,b) => b.collected - a.collected);
 
     boardEl.innerHTML = rows.length ? rows.map(function(r, idx){
-        const medal = sortBy==='name' ? (idx+1)+'.' : (idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':(idx+1)+'.');
-        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px;cursor:pointer;" onclick="openOrgDetail(\'' + r.org.id + '\')">' +
+        const medal = idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':(idx+1)+'.';
+        return '<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;" onclick="openOrgDetail(\'' + r.org.id + '\')">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;">' +
                 '<div>' +
-                    '<span style="font-weight:800;color:#f39c12;margin-right:6px;">' + medal + '</span>' +
+                    '<span style="font-weight:800;color:#f39c12;margin-right:8px;">' + medal + '</span>' +
                     '<span style="font-weight:800;color:white;">' + (r.org.name||'Unnamed') + '</span>' +
-                    '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">👤 ' + (r.admin?r.admin.name:'—') + ' · 📂 ' + r.oGroups + ' · 👥 ' + r.oMembers + '</div>' +
+                    '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px;">👤 ' + (r.admin?r.admin.name:'—') + ' · 📂 ' + r.oGroups + ' groups · 👥 ' + r.oMembers + ' members</div>' +
                 '</div>' +
                 '<div style="text-align:right;">' +
                     '<div style="font-weight:800;color:#10b981;">₹' + r.collected.toLocaleString('en-IN') + '</div>' +
@@ -496,9 +447,9 @@ async function loadSupremeStats(){
                 '</div>' +
             '</div>' +
         '</div>';
-    }).join('') : '<div style="text-align:center;color:var(--text-dim);padding:24px;">No organizations match these filters</div>';
+    }).join('') : '<div style="text-align:center;color:var(--text-dim);padding:24px;">No organizations yet</div>';
 
-    // Platform-wide payment mode breakdown (respects the same filters)
+    // Platform-wide payment mode breakdown
     const modeMap = {};
     payments.forEach(function(p){
         const mode = p.paidBy || 'Unspecified';
@@ -507,7 +458,7 @@ async function loadSupremeStats(){
     const modeRows = Object.keys(modeMap).sort(function(a,b){ return modeMap[b]-modeMap[a]; });
     document.getElementById('supremeStatsModeBreakdown').innerHTML = modeRows.length
         ? modeRows.map(function(mode){
-            return '<div style="display:flex;justify-content:space-between;font-size:0.82rem;padding:6px 0;border-bottom:1px solid var(--border);">' +
+            return '<div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:8px 0;border-bottom:1px solid var(--border);">' +
                 '<span style="color:var(--text-dim);">' + mode + '</span>' +
                 '<span style="color:white;font-weight:700;">₹' + modeMap[mode].toLocaleString('en-IN') + '</span>' +
             '</div>';
