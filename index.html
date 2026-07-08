@@ -780,60 +780,21 @@
 
     <!-- SUPREME STATISTICS TAB (only visible to role=supreme) -->
     <div id="supremeStatsTab" class="tab-content">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;margin-bottom:16px;">
             <h5 class="text-warning mb-0">📊 Platform Statistics</h5>
             <button class="btn-cancel" style="font-size:0.75rem;padding:6px 12px;" onclick="loadSupremeStats()">🔄 Refresh</button>
         </div>
-        <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:14px;">
-            <div style="margin-bottom:8px;">
-                <label class="form-label-small" style="margin-bottom:2px;">Admin</label>
-                <select id="supStatsAdmin" class="form-input" style="margin-bottom:0;padding:8px;font-size:0.82rem;" onchange="loadSupremeStats()">
-                    <option value="all">All Admins</option>
-                </select>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-                <div>
-                    <label class="form-label-small" style="margin-bottom:2px;">From</label>
-                    <input type="date" id="supStatsFrom" class="form-input" style="margin-bottom:0;padding:8px;font-size:0.82rem;" onchange="loadSupremeStats()">
-                </div>
-                <div>
-                    <label class="form-label-small" style="margin-bottom:2px;">To</label>
-                    <input type="date" id="supStatsTo" class="form-input" style="margin-bottom:0;padding:8px;font-size:0.82rem;" onchange="loadSupremeStats()">
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-                <div>
-                    <label class="form-label-small" style="margin-bottom:2px;">Org Status</label>
-                    <select id="supStatsStatus" class="form-input" style="margin-bottom:0;padding:8px;font-size:0.82rem;" onchange="loadSupremeStats()">
-                        <option value="all">All</option>
-                        <option value="active">Active only</option>
-                        <option value="suspended">Suspended only</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="form-label-small" style="margin-bottom:2px;">Sort By</label>
-                    <select id="supStatsSort" class="form-input" style="margin-bottom:0;padding:8px;font-size:0.82rem;" onchange="loadSupremeStats()">
-                        <option value="collected">Collected (high→low)</option>
-                        <option value="balance">Balance (high→low)</option>
-                        <option value="members">Members (high→low)</option>
-                        <option value="groups">Groups (high→low)</option>
-                        <option value="name">Name (A→Z)</option>
-                    </select>
-                </div>
-            </div>
-            <button class="btn-cancel" style="width:100%;margin-top:10px;font-size:0.78rem;padding:7px;" onclick="clearSupremeStatsFilters()">✕ Clear Filters</button>
-        </div>
-        <div id="supremeStatsTotals" style="display:flex;gap:8px;overflow-x:auto;margin-bottom:8px;padding-bottom:2px;"></div>
-        <div id="supremeStatsDetailPanel" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <div id="supremeStatsDetailTitle" style="font-weight:800;color:white;font-size:0.85rem;"></div>
+        <div id="supremeStatsTotals" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;"></div>
+        <div id="supremeStatsDetailPanel" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:20px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div id="supremeStatsDetailTitle" style="font-weight:800;color:white;font-size:0.9rem;"></div>
                 <button class="btn-cancel" style="font-size:0.7rem;padding:4px 10px;" onclick="closeSupremeStatsDetail()">✕ Close</button>
             </div>
-            <div id="supremeStatsDetailList" style="max-height:220px;overflow-y:auto;"></div>
+            <div id="supremeStatsDetailList" style="max-height:240px;overflow-y:auto;"></div>
         </div>
-        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🏆 Admins by Collections</div>
-        <div id="supremeStatsLeaderboard" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
-        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">💳 Platform-wide Payment Modes</div>
+        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">🏆 Admins by Collections</div>
+        <div id="supremeStatsLeaderboard" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;"></div>
+        <div style="font-size:0.78rem;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">💳 Payment Modes</div>
         <div id="supremeStatsModeBreakdown"></div>
     </div>
 </div>
